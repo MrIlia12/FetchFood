@@ -2,3 +2,4 @@
 Console.WriteLine("Hello, World!");
 Console.WriteLine("Ilya Yaryshev!");
 Console.WriteLine("Привет, это Лия!");
+Console.WriteLine("Fayzirahmon Rahmonov");
