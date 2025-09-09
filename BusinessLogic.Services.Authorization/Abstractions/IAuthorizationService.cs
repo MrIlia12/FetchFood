@@ -11,8 +11,8 @@ namespace BusinessLogic.Services.Authorization.Abstractions
     /// </summary>
     public interface IAuthorizationService
     {
-        Task<bool> IsUserAuthorizedAsync(long userId);
-        Task<bool> AuthorizeUserAsync(long userId, string authorizationCode);
-        Task<bool> RemoveAuthorizationAsync(long userId);
+        Task<bool> IsUserAuthorized(long userId);
+        Task<bool> AuthorizeUser(long userId, string authorizationCode);
+        Task<bool> RemoveAuthorization(long userId);
     }
 }

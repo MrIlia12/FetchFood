@@ -15,7 +15,7 @@ namespace DataAccess.EntityFramework
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseNpgsql("");
+            optionsBuilder.UseNpgsql("Server=localhost;port=9432;database=FetchFood;User ID=postgres;password=1882320;");
             base.OnConfiguring(optionsBuilder);
         }
     }

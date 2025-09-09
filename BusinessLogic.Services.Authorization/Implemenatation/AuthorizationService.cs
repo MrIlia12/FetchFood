@@ -1,12 +1,13 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
 using Microsoft.Extensions.Logging;
+using DataAccess.EntityFramework;
 
 namespace BusinessLogic.Services.Authorization
 {
     public class AuthorizationService : IAuthorizationService
     {
-        private readonly TelegramAuthDbContext _context;
         private readonly ILogger<AuthorizationService> _logger;
+        private readonly 
 
         public AuthorizationService(
         ILogger<AuthorizationService> logger)
@@ -14,7 +15,7 @@ namespace BusinessLogic.Services.Authorization
             _logger = logger;
         }
 
-        public async Task<bool> IsUserAuthorizedAsync(long userId)
+        public async Task<bool> IsUserAuthorized(long userId)
         {
             try
             {
