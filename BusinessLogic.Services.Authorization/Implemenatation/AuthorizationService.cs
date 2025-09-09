@@ -1,31 +1,26 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
 using Microsoft.Extensions.Logging;
-using DataAccess.EntityFramework;
+using DataAccess.Repositories.Abstractions;
+using Telegram.Bot;
 
 namespace BusinessLogic.Services.Authorization
 {
     public class AuthorizationService : IAuthorizationService
     {
-        private readonly ILogger<AuthorizationService> _logger;
-        private readonly 
+        private readonly ILogger<AuthorizationService> Logger;
+        private readonly IUserRepository UserRepository;
+        private readonly ITeleg
 
         public AuthorizationService(
+        IUserRepository userRepository,
         ILogger<AuthorizationService> logger)
         {
-            _logger = logger;
+            Logger = logger;
+            UserRepository = userRepository;
         }
 
-        public async Task<bool> IsUserAuthorized(long userId)
+        public bool IsUserAuthorized(long userId)
         {
-            try
-            {
-                return await _context.AuthorizedUsers
-                    .AnyAsync(u => u.TelegramUserId == userId && u.IsActive && u.AuthorizationStatus == "Approved");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking authorization for user {UserId}", userId);
-                return false;
-            }
+            var user 
         }
     }

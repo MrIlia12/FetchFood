@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ClassLibrary1\DataAccess.Repositories.Abstractions.csproj" />
     <ProjectReference Include="..\DataAccess.Entities\DataAccess.Entities.csproj" />
-    <ProjectReference Include="..\DataAccess.EntityFramework\DataAccess.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>
