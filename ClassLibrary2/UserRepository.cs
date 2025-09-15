@@ -13,15 +13,18 @@ namespace DataAccess.Repositories.Implementations
             dbContext = context;
         }
 
-        public User GetUserById(long telegramId)
+        public async Task<User> GetUserByIdAsync(long telegramId)
         {
-            return dbContext.Users.FirstOrDefault(x => x.TelegramUserId == telegramId);
+            return await new Task<User>(() => 
+            {
+                return dbContext.Users.FirstOrDefault(x => x.TelegramUserId == telegramId);
+            });
         }
 
-        public bool AddUser(User user) 
+        public async Task<bool> AddUserAsync(User user) 
         {
-            dbContext.Users.Add(user);
-            dbContext.SaveChanges();
+            await dbContext.Users.AddAsync(user);
+            await dbContext.SaveChangesAsync();
             return true;
         }
 

@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FetchFood", "FetchFood.csproj", "{3D494648-4D4D-4457-8B8E-5150088AD855}"
+	ProjectSection(ProjectDependencies) = postProject
+		{23B32031-5CBB-470D-A5E7-95059AADACCD} = {23B32031-5CBB-470D-A5E7-95059AADACCD}
+		{BE44A786-0647-497F-ACC6-CB6CA1D0D260} = {BE44A786-0647-497F-ACC6-CB6CA1D0D260}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusinessLogic.Services.Authorization", "..\BusinessLogic.Services.Authorization\BusinessLogic.Services.Authorization.csproj", "{F484E657-C959-4C29-96AD-CADE369B09D2}"
 	ProjectSection(ProjectDependencies) = postProject

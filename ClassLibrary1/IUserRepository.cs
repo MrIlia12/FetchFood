@@ -4,9 +4,9 @@ namespace DataAccess.Repositories.Abstractions
 {
     public interface IUserRepository
     {
-        bool AddUser(User user);
+        Task<bool> AddUserAsync(User user);
 
-        User GetUserById(long TelegramUserId);
+        Task<User> GetUserByIdAsync(long TelegramUserId);
 
         bool RemoveUserById(long TelegramUserId);
     }

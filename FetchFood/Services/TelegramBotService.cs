@@ -1,19 +1,23 @@
-﻿using Telegram.Bot;
+﻿using BusinessLogic.Services.Authorization.Abstractions;
+using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using FetchFood.Abstractions;
 
 namespace FetchFood.Services
 {
     // Версия библиотеки Telegram.Bot: 22.6.2
-    internal class TelegramBotService
+    internal class TelegramBotService : ITelegramBotService
     {
         private readonly TelegramBotClient _bot;
         private readonly CancellationTokenSource _cts = new();
+        private readonly IAuthorizationService _authorizationService;
 
-        public TelegramBotService(string token)
+        public TelegramBotService(string token, IAuthorizationService authorizationService)
         {
             _bot = new TelegramBotClient(token);
+            _authorizationService = authorizationService;
         }
 
         public async Task StartAsync()
