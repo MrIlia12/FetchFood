@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using DataAccess.Entities;
 
 namespace BusinessLogic.Services.Authorization.Abstractions
 {
@@ -11,8 +7,8 @@ namespace BusinessLogic.Services.Authorization.Abstractions
     /// </summary>
     public interface IAuthorizationService
     {
-        Task<bool> IsUserAuthorized(long userId);
-        Task<bool> AuthorizeUser(long userId, string authorizationCode);
+        Task<bool> IsUserAuthorizedAsync(long userId);
+        Task<bool> AuthorizeUserAsync(User user);
         Task<bool> RemoveAuthorization(long userId);
     }
 }

@@ -13,7 +13,7 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        var connectionString = "Test";
+        var connectionString = "";
 
         var app = ConfigureApp(args, connectionString);
         
@@ -34,9 +34,9 @@ public static class Program
             if (string.IsNullOrEmpty(token))
                 throw new InvalidOperationException($"[{LogMessages.ERROR}]: не удалось получить токен из settings.json.");
 
-            var botService = app.Services.GetRequiredService<TelegramBotService>();
+            var botService = app.Services.GetRequiredService<ITelegramBotService>();
             
-            await botService.StartAsync();
+            await botService.StartAsync(token);
 
             Console.WriteLine("Бот запущен. Нажмите любую клавишу для выхода...");
             Console.ReadKey();
@@ -44,6 +44,8 @@ public static class Program
 
             Environment.Exit(0);
         });
+
+        app.Run();
     }
 
     public static WebApplication ConfigureApp(string[] args, string connectionString)

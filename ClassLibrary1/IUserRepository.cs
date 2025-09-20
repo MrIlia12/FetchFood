@@ -8,6 +8,6 @@ namespace DataAccess.Repositories.Abstractions
 
         Task<User> GetUserByIdAsync(long TelegramUserId);
 
-        bool RemoveUserById(long TelegramUserId);
+        Task<bool> RemoveUserByIdAsync(long TelegramUserId);
     }
 }

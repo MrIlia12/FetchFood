@@ -7,13 +7,9 @@ namespace FetchFood.Abstractions
 {
     public interface ITelegramBotService
     {
-        public async Task StartAsync()
+        public async Task StartAsync(string token)
         { }
 
         public Task StopAsync();
-
-        private static async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
-        { }
-
     }
 }

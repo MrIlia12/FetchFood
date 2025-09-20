@@ -1,8 +1,8 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
 using Microsoft.Extensions.Logging;
 using DataAccess.Repositories.Abstractions;
+using DataAccess.Entities;
 using Telegram.Bot;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace BusinessLogic.Services.Authorization
 {
@@ -10,7 +10,7 @@ namespace BusinessLogic.Services.Authorization
     {
         private readonly ILogger<AuthorizationService> Logger;
         private readonly IUserRepository UserRepository;
-        private readonly ITelegramBotClient BotClient;
+        //private readonly ITelegramBotClient BotClient;
 
         public AuthorizationService(
         IUserRepository userRepository,
@@ -32,25 +32,14 @@ namespace BusinessLogic.Services.Authorization
             return true;
         }
 
-        public bool IsUserAuthorized(long userId)
+        public async Task<bool> AuthorizeUserAsync(User user)
         {
-            var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
-            {
-                new[]
-                {
-                    KeyboardButton.WithRequestContact("📞 Share My Contact")
-                }
-            })
+            return await UserRepository.AddUserAsync(user);
+        }
 
-            {
-                ResizeKeyboard = true,
-                OneTimeKeyboard = true
-            };
-
-            BotClient.SendMessage(
-            chatId: chatId,
-            text: "👋 Welcome! To use this bot, please share your contact information for authorization.",
-            replyMarkup: requestContactKeyboard);
+        public async Task<bool> RemoveAuthorization(long userId)
+        {
+            return await UserRepository.RemoveUserByIdAsync(userId);
         }
     }
 }

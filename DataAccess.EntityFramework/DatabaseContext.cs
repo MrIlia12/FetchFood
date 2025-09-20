@@ -8,7 +8,8 @@ namespace DataAccess.EntityFramework
     {
         public DbSet<User> Users { get; set; }
 
-        public DataContext()
+        public DataContext(DbContextOptions<DataContext> options)
+            : base(options)
         {
             Database.EnsureCreated();
         }
