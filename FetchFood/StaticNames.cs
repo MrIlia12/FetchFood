@@ -8,6 +8,7 @@
     {
         public const string START = "/start";
         public const string HELP = "/help";
+        public const string ORDER = "/order";
     }
     internal static class LogMessages
     {

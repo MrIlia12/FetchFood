@@ -10,10 +10,12 @@ namespace FetchFood.Services
     {
         private readonly TelegramBotClient _bot;
         private readonly CancellationTokenSource _cts = new();
+        private readonly IOrderService _orderService;
 
-        public TelegramBotService(string token)
+        public TelegramBotService(string token, IOrderService orderService)
         {
             _bot = new TelegramBotClient(token);
+            _orderService = orderService;
         }
 
         public async Task StartAsync()
@@ -40,9 +42,11 @@ namespace FetchFood.Services
             return Task.CompletedTask;
         }
 
-        private static async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
+        private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
             if (update.Message is not { } msg) return;
+
+            // Обработка текстовых сообщений
             if (msg.Text is not { } text) return;
 
             string? command = text.Split(' ')[0];
@@ -57,9 +61,18 @@ namespace FetchFood.Services
                     await bot.SendMessage(msg.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
                     break;
 
-                default:
-                    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                case BotCommands.ORDER:
+                    await _orderService.StartOrderAsync(msg.Chat.Id, bot, ct);
                     break;
+
+                default:
+                    // Если это не команда, передаем сообщение в сервис заказов
+                    await _orderService.ProcessMessageAsync(msg.Chat.Id, text, bot, ct);
+                    break;
+
+                //default:
+                //    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                //    break;
             }
         }
 
