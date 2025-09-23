@@ -10,7 +10,6 @@ namespace BusinessLogic.Services.Authorization
     {
         private readonly ILogger<AuthorizationService> Logger;
         private readonly IUserRepository UserRepository;
-        //private readonly ITelegramBotClient BotClient;
 
         public AuthorizationService(
         IUserRepository userRepository,

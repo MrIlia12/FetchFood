@@ -8,7 +8,6 @@ namespace DataAccess.Repositories.Implementations
 {
     public class UserRepository : IUserRepository
     {
-        //private readonly DataContext dbContext;
         private readonly IServiceScopeFactory _scopeFactory;
 
         public UserRepository(IServiceScopeFactory scopeFactory)
