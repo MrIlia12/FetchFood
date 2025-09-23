@@ -2,27 +2,74 @@
 using FetchFood.Services;
 using System.Text.Json;
 using FetchFood.Models;
+using BusinessLogic.Services.Authorization;
+using DataAccess.Repositories.Abstractions;
+using DataAccess.Repositories.Implementations;
+using BusinessLogic.Services.Authorization.Abstractions;
+using FetchFood.Abstractions;
+using DataAccess.EntityFramework;
 
-Console.WriteLine("Hello, World!");
-Console.WriteLine("Ilya Yaryshev!");
-Console.WriteLine("Привет, это Лия!");
-Console.WriteLine("Литвинова Анна");
-Console.WriteLine("Рахмонов Файзирахмон");
+public static class Program
+{
+    public static void Main(string[] args)
+    {
+        var connectionString = "";
 
-string json = await File.ReadAllTextAsync("settings.json");
+        var app = ConfigureApp(args, connectionString);
+        
+        app.Run( async (context) =>
+        {
+            Console.WriteLine("Hello, World!");
+            Console.WriteLine("Ilya Yaryshev!");
+            Console.WriteLine("Привет, это Лия!");
+            Console.WriteLine("Литвинова Анна");
+            Console.WriteLine("Рахмонов Файзирахмон");
 
-Settings settings = JsonSerializer.Deserialize<Settings>(json)
-    ?? throw new InvalidOperationException($"[{LogMessages.ERROR}]: структура settings.json некорректна."); // разбираем настройки из json
+            string json = await File.ReadAllTextAsync("settings.json");
 
-string token = settings.Telegram.BotToken;
-if (string.IsNullOrEmpty(token))
-throw new InvalidOperationException($"[{LogMessages.ERROR}]: не удалось получить токен из settings.json.");
+            Settings settings = JsonSerializer.Deserialize<Settings>(json)
+                ?? throw new InvalidOperationException($"[{LogMessages.ERROR}]: структура settings.json некорректна."); // разбираем настройки из json
 
-TelegramBotService botService = new TelegramBotService(token);
-await botService.StartAsync();
+            string token = settings.Telegram.BotToken;
+            if (string.IsNullOrEmpty(token))
+                throw new InvalidOperationException($"[{LogMessages.ERROR}]: не удалось получить токен из settings.json.");
 
-Console.WriteLine("Бот запущен. Нажмите любую клавишу для выхода...");
-Console.ReadKey();
-await botService.StopAsync();
+            var botService = app.Services.GetRequiredService<ITelegramBotService>();
+            
+            await botService.StartAsync(token);
 
-Environment.Exit(0);
+            Console.WriteLine("Бот запущен. Нажмите любую клавишу для выхода...");
+            Console.ReadKey();
+            await botService.StopAsync();
+
+            Environment.Exit(0);
+        });
+
+        app.Run();
+    }
+
+    public static WebApplication ConfigureApp(string[] args, string connectionString)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.ConfigureContext(connectionString);
+        builder.Services.InstallServices();
+        builder.Services.InstallRepositories();
+
+        return builder.Build();
+    }
+
+    private static void InstallServices(this IServiceCollection serviceCollection)
+    {
+        serviceCollection
+        .AddTransient<IAuthorizationService, AuthorizationService>()
+        .AddTransient<ITelegramBotService, TelegramBotService>();
+    }
+
+    private static void InstallRepositories(this IServiceCollection serviceCollection)
+    {
+        serviceCollection
+            .AddTransient<IUserRepository, UserRepository>();
+    }
+
+}
