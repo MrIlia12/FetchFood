@@ -15,9 +15,12 @@ namespace FetchFood.Services
         private readonly CancellationTokenSource _cts = new();
         private readonly IAuthorizationService _authorizationService;
 
-        public TelegramBotService(IAuthorizationService authorizationService)
+        private readonly ITelegramBotCartService _cartService;
+
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService)
         {
             _authorizationService = authorizationService;
+            _cartService = cartService;
         }
 
         public async Task StartAsync(string token)
@@ -61,22 +64,31 @@ namespace FetchFood.Services
 
             switch (command)
             {
-                case BotCommands.START:
-                    await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
+                case "/start":
+                    await bot.SendMessage(
+                        msg.Chat.Id,
+                        "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!",
+                        cancellationToken: ct);
+
                     var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
                     if (!isAuthorized)
                     {
                         await RequestContactAsync(msg.Chat.Id);
                         return;
                     }
+
+                    await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
                     break;
 
-                case BotCommands.HELP:
-                    await bot.SendMessage(msg.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
+                case "/help":
+                    await bot.SendMessage(
+                        msg.Chat.Id,
+                        "Всем привет! Я - бот доставки еды. \nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\nПожелайте мне успехов в развитии!♥️",
+                        cancellationToken: ct);
                     break;
 
                 default:
-                    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                    await _cartService.HandleMessageAsync(bot, msg, ct);
                     break;
             }
         }

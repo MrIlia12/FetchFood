@@ -13,7 +13,7 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        var connectionString = "";
+        var connectionString = "Server=localhost;port=9432;database=FetchFood;User ID=postgres;password=1882320";
 
         var app = ConfigureApp(args, connectionString);
         
@@ -63,7 +63,8 @@ public static class Program
     {
         serviceCollection
         .AddTransient<IAuthorizationService, AuthorizationService>()
-        .AddTransient<ITelegramBotService, TelegramBotService>();
+        .AddTransient<ITelegramBotService, TelegramBotService>()
+        .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)
