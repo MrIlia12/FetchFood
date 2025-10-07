@@ -8,6 +8,8 @@ using DataAccess.Repositories.Implementations;
 using BusinessLogic.Services.Authorization.Abstractions;
 using FetchFood.Abstractions;
 using DataAccess.EntityFramework;
+using BusinessLogic.Services.Menu.Abstractions;
+using BusinessLogic.Services.Menu.Implementation;
 
 public static class Program
 {
@@ -63,6 +65,7 @@ public static class Program
     {
         serviceCollection
         .AddTransient<IAuthorizationService, AuthorizationService>()
+        .AddTransient<IMenuService, MenuService>()
         .AddTransient<ITelegramBotService, TelegramBotService>();
     }
 

@@ -14,8 +14,7 @@ namespace DataAccess.Entities
         public string Name { get; set; }
 
         [Required]
-        [MaxLength(10)]
-        public double Price { get; set; }
+        public decimal Price { get; set; }
 
         [Required]
         public PositionStatus Status { get; set; }
