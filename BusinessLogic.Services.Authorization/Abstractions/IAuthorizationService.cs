@@ -1,4 +1,5 @@
 ﻿using DataAccess.Entities;
+using DataAccess.Entities.Models;
 
 namespace BusinessLogic.Services.Authorization.Abstractions
 {
@@ -8,7 +9,11 @@ namespace BusinessLogic.Services.Authorization.Abstractions
     public interface IAuthorizationService
     {
         Task<bool> IsUserAuthorizedAsync(long userId);
+
         Task<bool> AuthorizeUserAsync(User user);
+
         Task<bool> RemoveAuthorization(long userId);
+
+        Task<bool> IsUserAdministratorAsync(long userId);
     }
 }

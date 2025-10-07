@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using FetchFood.Abstractions;
 using Telegram.Bot.Types.ReplyMarkups;
+using BusinessLogic.Services.Administration.Abstraction;
 
 namespace FetchFood.Services
 {
@@ -14,10 +15,12 @@ namespace FetchFood.Services
         private TelegramBotClient _bot;
         private readonly CancellationTokenSource _cts = new();
         private readonly IAuthorizationService _authorizationService;
+        private readonly IAdministrationService _administrationService;
 
-        public TelegramBotService(IAuthorizationService authorizationService)
+        public TelegramBotService(IAuthorizationService authorizationService, IAdministrationService administrationService)
         {
             _authorizationService = authorizationService;
+            _administrationService = administrationService;
         }
 
         public async Task StartAsync(string token)
@@ -63,10 +66,44 @@ namespace FetchFood.Services
             {
                 case BotCommands.START:
                     await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
+
                     var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
                     if (!isAuthorized)
                     {
                         await RequestContactAsync(msg.Chat.Id);
+                        return;
+                    }
+
+                    var isAdministrator = await _authorizationService.IsUserAdministratorAsync(msg.From.Id);
+                    if (isAdministrator)
+                    {
+                        GetAdministratorConsoleAsync(msg.Chat.Id);
+                        return;
+                    }
+
+                    break;
+
+                case BotCommands.GETORDERS:
+                    if (await _authorizationService.IsUserAdministratorAsync(msg.From.Id))
+                    {
+                        var ordersNumber = 1;
+                        //try 
+                        //{
+                        //    ordersNumber = Convert.ToInt32(text.Split(' ')[1]);
+                        //}
+                        //catch 
+                        //{
+                        //    await bot.SendMessage(msg.Chat.Id, "Число записей не задано, попробуйте ещё раз.", cancellationToken: ct);
+                        //}
+
+                        var ordersIds = await _administrationService.GetOrdersIdsAsync(ordersNumber);
+                        await _bot.SendMessage(
+                            chatId: msg.Chat.Id,
+                            text: ordersIds);
+
+                        await _bot.SendMessage(
+                            chatId: msg.Chat.Id,
+                            text: ordersIds);
                         return;
                     }
                     break;
@@ -81,6 +118,10 @@ namespace FetchFood.Services
             }
         }
 
+        /// <summary>
+        /// Метод запроса на предоставления контакта.
+        /// </summary>
+        /// <param name="chatId">Id чата.</param>
         private async Task RequestContactAsync(long chatId)
         {
             var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
@@ -98,6 +139,26 @@ namespace FetchFood.Services
             await _bot.SendMessage(
                 chatId: chatId,
                 text: "👋 Welcome! To use this bot, please share your contact information for authorization.",
+                replyMarkup: requestContactKeyboard);
+        }
+
+        private async Task GetAdministratorConsoleAsync(long chatId)
+        {
+            var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    new KeyboardButton("GetOrders")
+                }
+            })
+            {
+                ResizeKeyboard = true,
+                OneTimeKeyboard = true
+            };
+
+            await _bot.SendMessage(
+                chatId: chatId,
+                text: "Ваша роль - администратор.",
                 replyMarkup: requestContactKeyboard);
         }
 

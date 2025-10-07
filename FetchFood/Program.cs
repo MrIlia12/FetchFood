@@ -8,12 +8,14 @@ using DataAccess.Repositories.Implementations;
 using BusinessLogic.Services.Authorization.Abstractions;
 using FetchFood.Abstractions;
 using DataAccess.EntityFramework;
+using BusinessLogic.Services.Administration.Abstraction;
+using BusinessLogic.Services.Administration.Implemenatation;
 
 public static class Program
 {
     public static void Main(string[] args)
     {
-        var connectionString = "";
+        var connectionString = "Server=localhost;port=9432;database=FetchFood;User ID=postgres;password=1882320;";
 
         var app = ConfigureApp(args, connectionString);
         
@@ -63,13 +65,15 @@ public static class Program
     {
         serviceCollection
         .AddTransient<IAuthorizationService, AuthorizationService>()
-        .AddTransient<ITelegramBotService, TelegramBotService>();
+        .AddTransient<ITelegramBotService, TelegramBotService>()
+        .AddTransient<IAdministrationService, AdministrationService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)
     {
         serviceCollection
-            .AddTransient<IUserRepository, UserRepository>();
+            .AddTransient<IUserRepository, UserRepository>()
+            .AddTransient<IOrderRepository, OrderRepository>();
     }
 
 }
