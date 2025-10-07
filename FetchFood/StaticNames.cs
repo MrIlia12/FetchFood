@@ -8,7 +8,7 @@
     {
         public const string START = "/start";
         public const string HELP = "/help";
-        public const string GETORDERS = "GetOrders";
+        public const string GETORDERS = "GetOrder";
     }
     internal static class LogMessages
     {

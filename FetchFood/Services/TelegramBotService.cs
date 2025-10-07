@@ -6,6 +6,7 @@ using Telegram.Bot.Types.Enums;
 using FetchFood.Abstractions;
 using Telegram.Bot.Types.ReplyMarkups;
 using BusinessLogic.Services.Administration.Abstraction;
+using BusinessLogic.Services.Administration.Models;
 
 namespace FetchFood.Services
 {
@@ -58,6 +59,48 @@ namespace FetchFood.Services
                 return;
             }
 
+            // Обработка событий по callback системе.
+            var callBackData = update.CallbackQuery.Data.Split(' ');
+
+            var number = callBackData.Length > 1 ? Convert.ToInt32(callBackData[1]) : 0;
+
+            if (callBackData != null)
+            {
+                switch (callBackData[0])
+                {
+                    case BotCommands.GETORDERS:
+                        var order = await _administrationService.GetOrderInformationAsync(number);
+                        var keyboard = new InlineKeyboardMarkup();
+                        var keyBoardButtons = new List<InlineKeyboardButton>();
+
+                        if (order.OrderPosition != OrderPosition.First)
+                        {
+                            keyBoardButtons.Add(new InlineKeyboardButton("⬅", "GetOrder"));
+                        }
+
+                        keyBoardButtons.Add(new InlineKeyboardButton("Выбрать", "ToOrderMenu"));
+
+                        if (order.OrderPosition != OrderPosition.Last)
+                        {
+                            keyBoardButtons.Add(new InlineKeyboardButton("➡", "GetOrder"));
+                        }
+
+                        keyboard.AddButtons(keyBoardButtons.ToArray());
+
+                        await _bot.SendMessage(
+                            chatId: msg.Chat.Id,
+                            text: "Заказ: " + order.Id + "\n" +
+                                    "Пользователь:" + order.UserName + "\n" +
+                                    "Статус:" + order.Status + "\n" +
+                                    "Цена:" + order.Price + "\n" +
+                                    "Дата заказа:" + order.DateOrder,
+                            replyMarkup: keyboard);
+
+
+                        break;
+                }
+            }
+
             if (msg.Text is not { } text) return;
 
             string? command = text.Split(' ')[0];
@@ -83,31 +126,6 @@ namespace FetchFood.Services
 
                     break;
 
-                case BotCommands.GETORDERS:
-                    if (await _authorizationService.IsUserAdministratorAsync(msg.From.Id))
-                    {
-                        var ordersNumber = 1;
-                        //try 
-                        //{
-                        //    ordersNumber = Convert.ToInt32(text.Split(' ')[1]);
-                        //}
-                        //catch 
-                        //{
-                        //    await bot.SendMessage(msg.Chat.Id, "Число записей не задано, попробуйте ещё раз.", cancellationToken: ct);
-                        //}
-
-                        var ordersIds = await _administrationService.GetOrdersIdsAsync(ordersNumber);
-                        await _bot.SendMessage(
-                            chatId: msg.Chat.Id,
-                            text: ordersIds);
-
-                        await _bot.SendMessage(
-                            chatId: msg.Chat.Id,
-                            text: ordersIds);
-                        return;
-                    }
-                    break;
-
                 case BotCommands.HELP:
                     await bot.SendMessage(msg.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
                     break;
@@ -128,7 +146,7 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    KeyboardButton.WithRequestContact("📞 Share My Contact")
+                    KeyboardButton.WithRequestContact("📞 Поделиться контактом.")
                 }
             })
             {
@@ -138,23 +156,19 @@ namespace FetchFood.Services
 
             await _bot.SendMessage(
                 chatId: chatId,
-                text: "👋 Welcome! To use this bot, please share your contact information for authorization.",
+                text: "👋 Добро пожаловать! Чтобы использовать бота, пожалуйста поделитесь контактом.",
                 replyMarkup: requestContactKeyboard);
         }
 
         private async Task GetAdministratorConsoleAsync(long chatId)
         {
-            var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
+            var requestContactKeyboard = new InlineKeyboardMarkup(new[]
             {
                 new[]
                 {
-                    new KeyboardButton("GetOrders")
+                    new InlineKeyboardButton("Перейти к списку заказов", "GetOrder")
                 }
-            })
-            {
-                ResizeKeyboard = true,
-                OneTimeKeyboard = true
-            };
+            });
 
             await _bot.SendMessage(
                 chatId: chatId,
@@ -181,16 +195,14 @@ namespace FetchFood.Services
 
                 await _bot.SendMessage(
                     chatId: message.Chat.Id,
-                    text: "✅ Thank you! Your contact information has been received and saved. " +
-                         "Your authorization request is now pending approval. " +
-                         "You will be notified once approved.",
+                    text: "✅ Спасибо! Ваша контактная информация успешно сохранена.",
                     replyMarkup: removeKeyboard);
             }
             else
             {
                 await _bot.SendMessage(
                 chatId: message.Chat.Id,
-                text: "❌ Sorry, there was an error saving your contact information. Please try again later.");
+                text: "❌ Произошла ошибка, пожалуйста попробуйте позже.");
             }
         }
 

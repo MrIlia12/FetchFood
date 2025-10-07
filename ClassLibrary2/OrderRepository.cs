@@ -31,11 +31,9 @@ namespace DataAccess.Repositories.Implementations
         }
 
         /// <summary>
-        /// Получает указанное количество заказов, начиная с указанного индекса.
+        /// Получает заказ по порядковому номеру.
         /// </summary>
-        /// <param name="firstIndex">Первый индекс.</param>
-        /// <param name="count">Число записей.</param>
-        public async Task<Order[]> GetOrdersAsync(int firstIndex, int count)
+        public async Task<Order[]> GetOrdersAsync()
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();

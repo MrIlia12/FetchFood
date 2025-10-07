@@ -1,12 +1,6 @@
 ﻿using BusinessLogic.Services.Administration.Abstraction;
-using DataAccess.Entities;
-using DataAccess.Repositories;
+using BusinessLogic.Services.Administration.Models;
 using DataAccess.Repositories.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BusinessLogic.Services.Administration.Implemenatation
 {
@@ -16,26 +10,41 @@ namespace BusinessLogic.Services.Administration.Implemenatation
     public class AdministrationService : IAdministrationService
     {
         private readonly IOrderRepository _orderRepository;
+        private readonly IUserRepository _userRepository;
 
-        public AdministrationService(IOrderRepository orderRepository) 
+        public AdministrationService(IOrderRepository orderRepository, IUserRepository userRepository)
         {
             _orderRepository = orderRepository;
+            _userRepository = userRepository;
         }
 
         /// <summary>
-        /// Получает список из id заказов указанной длины.
+        /// Получает информацию по заказу по порядковому номеру.
         /// </summary>
-        /// <param name="count">Число заказов для вывода.</param>
+        /// <param name="number">Порядковый номер.</param>
         /// <returns></returns>
-        public async Task<string> GetOrdersIdsAsync(int count)
+        public async Task<OrderInformation> GetOrderInformationAsync(int number)
         {
-            var orders = await _orderRepository.GetOrdersAsync(0, count);
+            var orders = await _orderRepository.GetOrdersAsync();
+            var user = await _userRepository.GetUserByIdAsync(0);
+            var orderPosition = number == 0
+                ? OrderPosition.First
+                : number == orders.Length
+                ? OrderPosition.Last
+                : OrderPosition.Middle;
 
-            var result = "";
-            foreach (var order in orders)
+
+            var result = new OrderInformation
             {
-                result += order.Id.ToString() + "\n";
-            }
+                Id = orders[number].Id.ToString(),
+                CourierId = orders[number].CourierId.ToString(),
+                UserName = user.Name,
+                Price = orders[number].Price.ToString(),
+                Status = orders[number].Status.ToString(),
+                DateOrder = orders[number].DateOrder.ToString(),
+                OrderPosition = orderPosition
+            };
+
 
             return result;
         }

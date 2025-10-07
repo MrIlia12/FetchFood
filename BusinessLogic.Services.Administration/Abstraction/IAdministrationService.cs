@@ -1,4 +1,5 @@
-﻿using DataAccess.Entities;
+﻿using BusinessLogic.Services.Administration.Models;
+using DataAccess.Entities;
 
 namespace BusinessLogic.Services.Administration.Abstraction
 {
@@ -7,6 +8,6 @@ namespace BusinessLogic.Services.Administration.Abstraction
     /// </summary>
     public interface IAdministrationService 
     {
-        Task<string> GetOrdersIdsAsync(int count);
+        Task<OrderInformation> GetOrderInformationAsync(int number);
     }
 }
