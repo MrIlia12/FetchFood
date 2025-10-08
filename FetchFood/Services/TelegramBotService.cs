@@ -7,6 +7,7 @@ using FetchFood.Abstractions;
 using Telegram.Bot.Types.ReplyMarkups;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
+using DataAccess.Entities.Models;
 
 namespace FetchFood.Services
 {
@@ -51,21 +52,14 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
-            if (update.Message is not { } msg) return;
-
-            if (msg.Type == MessageType.Contact)
-            {
-                await HandleContactMessage(msg);
-                return;
-            }
-
             // Обработка событий по callback системе.
-            var callBackData = update.CallbackQuery.Data.Split(' ');
-
-            var number = callBackData.Length > 1 ? Convert.ToInt32(callBackData[1]) : 0;
-
-            if (callBackData != null)
+            if (update.Type is UpdateType.CallbackQuery)
             {
+                if (update.CallbackQuery is not { } callBack) return;
+
+                var callBackData = callBack.Data.Split(' ');
+                var number = callBackData.Length > 1 ? Convert.ToInt32(callBackData[1]) : 0;
+
                 switch (callBackData[0])
                 {
                     case BotCommands.GETORDERS:
@@ -75,20 +69,20 @@ namespace FetchFood.Services
 
                         if (order.OrderPosition != OrderPosition.First)
                         {
-                            keyBoardButtons.Add(new InlineKeyboardButton("⬅", "GetOrder"));
+                            keyBoardButtons.Add(new InlineKeyboardButton("⬅", $"GetOrder {number - 1}"));
                         }
 
-                        keyBoardButtons.Add(new InlineKeyboardButton("Выбрать", "ToOrderMenu"));
+                        keyBoardButtons.Add(new InlineKeyboardButton("Выбрать", $"ToOrderMenu {order.Id} {order.Status}"));
 
                         if (order.OrderPosition != OrderPosition.Last)
                         {
-                            keyBoardButtons.Add(new InlineKeyboardButton("➡", "GetOrder"));
+                            keyBoardButtons.Add(new InlineKeyboardButton("➡", $"GetOrder {number + 1}"));
                         }
 
                         keyboard.AddButtons(keyBoardButtons.ToArray());
 
                         await _bot.SendMessage(
-                            chatId: msg.Chat.Id,
+                            chatId: callBack.Message.Chat.Id,
                             text: "Заказ: " + order.Id + "\n" +
                                     "Пользователь:" + order.UserName + "\n" +
                                     "Статус:" + order.Status + "\n" +
@@ -98,7 +92,53 @@ namespace FetchFood.Services
 
 
                         break;
+
+                    case BotCommands.TOORDERMENU:
+                        var menuKeyboard = new InlineKeyboardMarkup();
+                        var menuKeyboardButtons = new List<InlineKeyboardButton>();
+
+                        if (callBackData[2] != OrderStatus.Complete.ToString())
+                        {
+                            menuKeyboardButtons.Add(new InlineKeyboardButton("Перевести заказ на следующий этап.", $"NextStep {number}"));
+                        }
+
+                        menuKeyboardButtons.Add(new InlineKeyboardButton("Удалить заказ", $"Delete {number}"));
+
+                        menuKeyboard.AddButtons(menuKeyboardButtons.ToArray());
+
+                        await _bot.SendMessage(
+                            chatId: callBack.Message.Chat.Id,
+                            text: "Меню заказа: " + number,
+                            replyMarkup: menuKeyboard);
+
+                        break;
+
+                    case BotCommands.ORDERNEXTSTEP:
+                        if (await _administrationService.ChangeOrderStatus(number))
+                        {
+                            var afterStepKeyboard = new InlineKeyboardMarkup(new[]
+                            {
+                                new[]
+                                {
+                                    new InlineKeyboardButton("В меню.", "GetOrder")
+                                }
+                            });
+
+                            await _bot.SendMessage(
+                                chatId: callBack.Message.Chat.Id,
+                                text: "Операция успешно выполнена",
+                                replyMarkup: afterStepKeyboard);
+                        }
+                        break;
                 }
+            }
+
+            if (update.Message is not { } msg) return;
+
+            if (msg.Type == MessageType.Contact)
+            {
+                await HandleContactMessage(msg);
+                return;
             }
 
             if (msg.Text is not { } text) return;

@@ -14,6 +14,10 @@ namespace DataAccess.Repositories.Abstractions
     {
         Task<bool> AddOrderAsync(Order order);
 
+        Task<Order> GetOrderByIdAsync(int id);
+
+        Task<bool> UpdateOrderAsync(Order order);
+
         Task<Order[]> GetOrdersAsync();
     }
 }

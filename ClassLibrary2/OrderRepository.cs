@@ -3,11 +3,6 @@ using DataAccess.EntityFramework;
 using DataAccess.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DataAccess.Repositories.Implementations
 {
@@ -27,6 +22,32 @@ namespace DataAccess.Repositories.Implementations
 
             await dbContext.Orders.AddAsync(order);
             await dbContext.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<Order> GetOrderByIdAsync(int id)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            var result = await dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
+            return result;
+        }
+
+        public async Task<bool> UpdateOrderAsync(Order order)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            var oldOrder = await dbContext.Orders.FirstOrDefaultAsync(x =>x.Id == order.Id);
+            oldOrder.UserId = order.UserId;
+            oldOrder.CourierId = order.CourierId;
+            oldOrder.Status = order.Status;
+            oldOrder.Price = order.Price;
+            oldOrder.DateOrder = order.DateOrder;
+
+            dbContext.SaveChanges();
+
             return true;
         }
 

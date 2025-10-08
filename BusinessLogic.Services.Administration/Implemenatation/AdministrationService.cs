@@ -1,5 +1,6 @@
 ﻿using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
+using DataAccess.Entities.Models;
 using DataAccess.Repositories.Abstractions;
 
 namespace BusinessLogic.Services.Administration.Implemenatation
@@ -26,10 +27,10 @@ namespace BusinessLogic.Services.Administration.Implemenatation
         public async Task<OrderInformation> GetOrderInformationAsync(int number)
         {
             var orders = await _orderRepository.GetOrdersAsync();
-            var user = await _userRepository.GetUserByIdAsync(0);
+            var user = await _userRepository.GetUserByIdAsync(orders[number].UserId);
             var orderPosition = number == 0
                 ? OrderPosition.First
-                : number == orders.Length
+                : number == orders.Length - 1
                 ? OrderPosition.Last
                 : OrderPosition.Middle;
 
@@ -47,6 +48,16 @@ namespace BusinessLogic.Services.Administration.Implemenatation
 
 
             return result;
+        }
+
+        public async Task<bool> ChangeOrderStatus(int orderId)
+        {
+            var order = await _orderRepository.GetOrderByIdAsync(orderId);
+            
+            var statusNumber = (int)order.Status;
+            order.Status = (OrderStatus)(statusNumber + 1);
+
+            return await _orderRepository.UpdateOrderAsync(order);
         }
     }
 }
