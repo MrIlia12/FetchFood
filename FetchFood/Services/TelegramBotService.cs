@@ -67,14 +67,14 @@ namespace FetchFood.Services
                         var keyboard = new InlineKeyboardMarkup();
                         var keyBoardButtons = new List<InlineKeyboardButton>();
 
-                        if (order.OrderPosition != OrderPosition.First)
+                        if (order.OrderPosition is not OrderPosition.First and not OrderPosition.Lonely)
                         {
                             keyBoardButtons.Add(new InlineKeyboardButton("⬅", $"GetOrder {number - 1}"));
                         }
 
                         keyBoardButtons.Add(new InlineKeyboardButton("Выбрать", $"ToOrderMenu {order.Id} {order.Status}"));
 
-                        if (order.OrderPosition != OrderPosition.Last)
+                        if (order.OrderPosition is not OrderPosition.Last and not OrderPosition.Lonely)
                         {
                             keyBoardButtons.Add(new InlineKeyboardButton("➡", $"GetOrder {number + 1}"));
                         }
@@ -84,10 +84,10 @@ namespace FetchFood.Services
                         await _bot.SendMessage(
                             chatId: callBack.Message.Chat.Id,
                             text: "Заказ: " + order.Id + "\n" +
-                                    "Пользователь:" + order.UserName + "\n" +
-                                    "Статус:" + order.Status + "\n" +
-                                    "Цена:" + order.Price + "\n" +
-                                    "Дата заказа:" + order.DateOrder,
+                                    "Пользователь: " + order.UserName + "\n" +
+                                    "Статус: " + order.Status + "\n" +
+                                    "Цена: " + order.Price + "\n" +
+                                    "Дата заказа: " + order.DateOrder,
                             replyMarkup: keyboard);
 
 
@@ -102,7 +102,7 @@ namespace FetchFood.Services
                             menuKeyboardButtons.Add(new InlineKeyboardButton("Перевести заказ на следующий этап.", $"NextStep {number}"));
                         }
 
-                        menuKeyboardButtons.Add(new InlineKeyboardButton("Удалить заказ", $"Delete {number}"));
+                        menuKeyboardButtons.Add(new InlineKeyboardButton("Удалить заказ", $"DeleteOrder {number}"));
 
                         menuKeyboard.AddButtons(menuKeyboardButtons.ToArray());
 
@@ -128,6 +128,24 @@ namespace FetchFood.Services
                                 chatId: callBack.Message.Chat.Id,
                                 text: "Операция успешно выполнена",
                                 replyMarkup: afterStepKeyboard);
+                        }
+                        break;
+
+                    case BotCommands.ORDERDELETE:
+                        if (await _administrationService.DeleteOrderAsync(number))
+                        {
+                            var afterDeleteKeyboard = new InlineKeyboardMarkup(new[]
+                            {
+                                new[]
+                                {
+                                    new InlineKeyboardButton("В меню.", "GetOrder")
+                                }
+                            });
+
+                            await _bot.SendMessage(
+                                chatId: callBack.Message.Chat.Id,
+                                text: "Операция успешно выполнена",
+                                replyMarkup: afterDeleteKeyboard);
                         }
                         break;
                 }

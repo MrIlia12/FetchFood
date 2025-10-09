@@ -62,5 +62,16 @@ namespace DataAccess.Repositories.Implementations
 
             return result;
         }
+
+        public async Task<bool> RemoveOrderByIdAsync(long orderId)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            var order = dbContext.Orders.FirstOrDefault(x => x.Id == orderId);
+            dbContext.Orders.Remove(order);
+            await dbContext.SaveChangesAsync();
+            return true;
+        }
     }
 }

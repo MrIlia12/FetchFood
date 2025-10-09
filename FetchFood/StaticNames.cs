@@ -11,6 +11,7 @@
         public const string GETORDERS = "GetOrder";
         public const string TOORDERMENU = "ToOrderMenu";
         public const string ORDERNEXTSTEP = "NextStep";
+        public const string ORDERDELETE = "DeleteOrder";
     }
     internal static class LogMessages
     {

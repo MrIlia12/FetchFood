@@ -15,6 +15,8 @@ namespace BusinessLogic.Services.Administration.Models
 
         Middle,
 
-        Last
+        Last,
+
+        Lonely
     }
 }

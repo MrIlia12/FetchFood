@@ -19,5 +19,7 @@ namespace DataAccess.Repositories.Abstractions
         Task<bool> UpdateOrderAsync(Order order);
 
         Task<Order[]> GetOrdersAsync();
+
+        Task<bool> RemoveOrderByIdAsync(long orderId);
     }
 }

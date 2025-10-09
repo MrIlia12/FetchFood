@@ -29,10 +29,12 @@ namespace BusinessLogic.Services.Administration.Implemenatation
             var orders = await _orderRepository.GetOrdersAsync();
             var user = await _userRepository.GetUserByIdAsync(orders[number].UserId);
             var orderPosition = number == 0
-                ? OrderPosition.First
+                ? orders.Length == 1
+                    ? OrderPosition.Lonely
+                    : OrderPosition.First
                 : number == orders.Length - 1
-                ? OrderPosition.Last
-                : OrderPosition.Middle;
+                    ? OrderPosition.Last
+                    : OrderPosition.Middle;
 
 
             var result = new OrderInformation
@@ -58,6 +60,11 @@ namespace BusinessLogic.Services.Administration.Implemenatation
             order.Status = (OrderStatus)(statusNumber + 1);
 
             return await _orderRepository.UpdateOrderAsync(order);
+        }
+
+        public async Task<bool> DeleteOrderAsync(int orderId)
+        {
+            return await _orderRepository.RemoveOrderByIdAsync(orderId);
         }
     }
 }
