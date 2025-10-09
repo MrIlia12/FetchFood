@@ -66,8 +66,7 @@ public static class Program
         serviceCollection
         .AddTransient<IAuthorizationService, AuthorizationService>()
         .AddTransient<ITelegramBotService, TelegramBotService>()
-        .AddTransient<IAdministrationService, AdministrationService>();
-        .AddTransient<ITelegramBotService, TelegramBotService>()
+        .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
     }
 

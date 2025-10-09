@@ -21,7 +21,7 @@ namespace FetchFood.Services
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
