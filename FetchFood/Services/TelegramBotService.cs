@@ -19,10 +19,13 @@ namespace FetchFood.Services
         private readonly IAuthorizationService _authorizationService;
         private readonly IAdministrationService _administrationService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, IAdministrationService administrationService)
+        private readonly ITelegramBotCartService _cartService;
+
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
+            _cartService = cartService;
         }
 
         public async Task StartAsync(string token)
@@ -182,6 +185,8 @@ namespace FetchFood.Services
                         return;
                     }
 
+
+                    await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
                     break;
 
                 case BotCommands.HELP:
@@ -189,7 +194,7 @@ namespace FetchFood.Services
                     break;
 
                 default:
-                    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                    await _cartService.HandleMessageAsync(bot, msg, ct);
                     break;
             }
         }
