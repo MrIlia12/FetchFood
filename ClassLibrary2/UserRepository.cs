@@ -17,16 +17,16 @@ namespace DataAccess.Repositories.Implementations
 
         public async Task<User> GetUserByIdAsync(long telegramId)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
-            var user = await dbContext.Users.FirstOrDefaultAsync(x => x.TelegramUserId == telegramId);
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            User user = await dbContext.Users.FirstOrDefaultAsync(x => x.TelegramUserId == telegramId);
             return user;
         }
 
         public async Task<bool> AddUserAsync(User user) 
         {
-            using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
             await dbContext.Users.AddAsync(user);
             await dbContext.SaveChangesAsync();
@@ -35,10 +35,10 @@ namespace DataAccess.Repositories.Implementations
 
         public async Task<bool> RemoveUserByIdAsync(long telegramId)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            var user = dbContext.Users.FirstOrDefault(x => x.TelegramUserId == telegramId);
+            User user = dbContext.Users.FirstOrDefault(x => x.TelegramUserId == telegramId);
             dbContext.Users.Remove(user);
             await dbContext.SaveChangesAsync();
             return true;
