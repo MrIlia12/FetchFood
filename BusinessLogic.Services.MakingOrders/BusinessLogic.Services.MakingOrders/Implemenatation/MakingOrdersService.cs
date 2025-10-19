@@ -91,7 +91,6 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 OrderProcessingResult result = orderData.CurrentState switch
                 {
                     OrderStatus.WaitingForAddress => await ProcessAddressInputAsync(userId, message, orderData),
-                    OrderStatus.WaitingForFullName => await ProcessFullNameInputAsync(userId, message, orderData),
                     OrderStatus.WaitingForComment => await ProcessCommentInputAsync(userId, message, orderData),
                     OrderStatus.WaitingForCommentText => await ProcessCommentInputAsync(userId, message, orderData),
                     OrderStatus.WaitingForConfirmation => await ProcessConfirmationInputAsync(userId, message, orderData),
@@ -205,7 +204,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 // Сохраняем адрес во временные данные
                 orderData.Address = FormatAddress(message);
-                orderData.CurrentState = OrderStatus.WaitingForFullName;
+                orderData.CurrentState = OrderStatus.WaitingForComment;
 
                 // Обновляем временные данные в репозитории черновиков
                 await _ordersDataRepository.SaveOrderDataAsync(orderData);
@@ -213,8 +212,17 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 return new OrderProcessingResult
                 {
                     Success = true,
-                    Message = $"✅ Адрес сохранен!\n📍 {orderData.Address}\n\nНапишите Ваши полные ФИО:",
-                    NextState = OrderStatus.WaitingForFullName
+                    Message = $"✅ Адрес сохранен!\n📍 {orderData.Address}\n\nХотите добавить комментарий к заказу?\n\n",
+                    NextState = OrderStatus.WaitingForComment,
+                    HasInlineKeyboard = true,
+                    InlineKeyboard = new InlineKeyboardMarkup(new[]
+                    {
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("✅ Да, добавить", "add_comment"),
+                            InlineKeyboardButton.WithCallbackData("❌ Нет, продолжить", "skip_comment")
+                        }
+                    })
                 };
             }
             catch (Exception ex)
@@ -222,57 +230,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 _logger.LogError(ex, $"Ошибка во время обработки адреса ({userId}): {ex}");
                 throw;
             }
-        }
-
-        private async Task<OrderProcessingResult> ProcessFullNameInputAsync(long userId, string message, UserOrderData orderData)
-        {
-            // Валидация ФИО
-            var validationResult = ValidateFullName(message);
-
-            if (!validationResult.IsValid)
-            {
-                return new OrderProcessingResult
-                {
-                    Success = false,
-                    Message = $"❌ {validationResult.ErrorMessage}\n\nПожалуйста, введите полные ФИО",
-                    NextState = OrderStatus.WaitingForFullName
-                };
-            }
-
-            // Сохраняем ФИО
-            orderData.FullName = FormatFullName(message);
-
-            User user = await _userRepository.GetUserByIdAsync(userId);
-            if (user == null)
-            {
-                return new OrderProcessingResult
-                {
-                    Success = false,
-                    Message = "❌ Не удалось получить данные пользователя. Попробуйте позже.",
-                    NextState = OrderStatus.WaitingForFullName
-                };
-            }
-
-            orderData.CurrentState = OrderStatus.WaitingForComment;
-
-            // Обновляем временные данные
-            await _ordersDataRepository.SaveOrderDataAsync(orderData);
-            return new OrderProcessingResult
-            {
-                Success = true,
-                Message = $"✅ ФИО сохранено!\n👤 {orderData.FullName}\n\nХотите добавить комментарий к заказу?\n\n",
-                NextState = OrderStatus.WaitingForComment,
-                HasInlineKeyboard = true,
-                InlineKeyboard = new InlineKeyboardMarkup(new[]
-                {
-                    new[]
-                    {
-                        InlineKeyboardButton.WithCallbackData("✅ Да, добавить", "add_comment"),
-                        InlineKeyboardButton.WithCallbackData("❌ Нет, продолжить", "skip_comment")
-                    }
-                })
-            };
-        }
+        }        
 
         // Обрабатываем выбранный ответ касательно выбора ввода комментария
         private async Task<OrderProcessingResult> ProcessCommentInputAsync(long userId, string message, UserOrderData orderData)
@@ -346,6 +304,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             }
 
             orderData.PhoneNumber = user.PhoneNumber;
+            orderData.Name = user.Name;
             orderData.CurrentState = OrderStatus.WaitingForConfirmation;
 
             await _ordersDataRepository.SaveOrderDataAsync(orderData);
@@ -375,7 +334,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             StringBuilder confirmationText = new StringBuilder();
 
             confirmationText.AppendLine("📋 Подтвердите заказ:\n");
-            confirmationText.AppendLine($"👤 ФИО: {orderData.FullName}");
+            confirmationText.AppendLine($"👤 Имя: {orderData.Name}");
             confirmationText.AppendLine($"📞 Телефон: {orderData.PhoneNumber}");
             confirmationText.AppendLine($"📍 Адрес: {orderData.Address}");
 
@@ -673,44 +632,5 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         }
         #endregion
 
-        #region Validation FullName
-        private (bool IsValid, string ErrorMessage) ValidateFullName(string fullName)
-        {
-            if (string.IsNullOrWhiteSpace(fullName))
-                return (false, "ФИО не может быть пустым.");
-
-            if (fullName.Length < 5)
-                return (false, "ФИО слишком короткое.");
-
-            // Должно быть как минимум 2 слова (имя и фамилия)
-            string[] words = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length < 2)
-                return (false, "Пожалуйста, укажите как минимум фамилию и имя.");
-
-            // Проверяем, что нет цифр и специальных символов
-            if (Regex.IsMatch(fullName, @"[0-9]"))
-                return (false, "ФИО не должно содержать цифры.");
-
-            if (Regex.IsMatch(fullName, @"[^\p{L}\s\-]"))
-                return (false, "ФИО содержит недопустимые символы.");
-
-            return (true, string.Empty);
-        }
-
-        private string FormatFullName(string rawFullName)
-        {
-            // Приводим к стандартному формату: каждое слово с заглавной буквы
-            string[] words = rawFullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length; i++)
-            {
-                if (words[i].Length > 0)
-                {
-                    words[i] = char.ToUpper(words[i][0]) + words[i].Substring(1).ToLower();
-                }
-            }
-
-            return string.Join(" ", words);
-        }
-        #endregion
     }
 }

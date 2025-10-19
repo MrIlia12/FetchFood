@@ -17,9 +17,6 @@ namespace DataAccess.Entities.Models
         /// <summary>Ожидание ввода адреса доставки (шаг оформления)</summary>
         WaitingForAddress,
 
-        /// <summary>Ожидание ввода полного ФИО (шаг оформления)</summary>
-        WaitingForFullName,
-
         /// <summary>Ожидание выбора ввода комментария к заказу(да/нет) (шаг оформления)</summary>
         WaitingForComment,
 

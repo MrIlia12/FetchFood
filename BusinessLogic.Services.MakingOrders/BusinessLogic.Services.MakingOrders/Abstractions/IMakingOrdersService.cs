@@ -23,7 +23,7 @@ namespace BusinessLogic.Services.MakingOrders.Abstractions
         /// Обрабатывает ввод пользователя на текущем шаге оформления заказа
         /// </summary>
         /// <param name="userId">ID пользователя в Telegram</param>
-        /// <param name="message">Сообщение от пользователя (адрес, ФИО, телефон и т.д.)</param>
+        /// <param name="message">Сообщение от пользователя (адрес, комментарий и т.д.)</param>
         /// <returns>Результат обработки с сообщением для пользователя и следующим шагом</returns>
         Task<OrderProcessingResult> ProcessUserInputAsync(long userId, string message);
 
