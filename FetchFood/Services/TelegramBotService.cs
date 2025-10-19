@@ -52,6 +52,11 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+            if (update.CallbackQuery is { } cq)
+            {
+                await HandleCallbackAsync(bot, cq, ct);
+                return;
+            }
             if (update.Message is not { } msg) return;
 
             if (msg.Type == MessageType.Contact)
@@ -63,7 +68,6 @@ namespace FetchFood.Services
             if (msg.Text is not { } text) return;
 
             string? command = text.Split(' ')[0];
-
             switch (command)
             {
                 case BotCommands.START:
@@ -87,11 +91,21 @@ namespace FetchFood.Services
 
                 case BotCommands.FIND:
                     // тут ищем позицию по части её имени
-                    string args = text.Length > command.Length
+                    string findArgs = text.Length > command.Length
                     ? text[command.Length..].Trim()
                     : string.Empty;
 
-                    await HandleFindCommandAsync(bot, msg, args, ct);
+                    await HandleFindCommandAsync(bot, msg, findArgs, ct);
+                    break;
+
+                case BotCommands.ADDPOS:
+                    string addArgs = text.Length > command.Length ? text[command.Length..].Trim() : string.Empty;
+                    await HandleAddPosCommandAsync(bot, msg, addArgs, ct);
+                    break;
+
+                case BotCommands.DELPOS:
+                    string delArgs = text.Length > command.Length ? text[command.Length..].Trim() : string.Empty;
+                    await HandleDelPosCommandAsync(bot, msg, delArgs, ct);
                     break;
 
                 default:
@@ -233,7 +247,101 @@ namespace FetchFood.Services
                 replyMarkup: new InlineKeyboardMarkup(rows),
                 cancellationToken: ct);
         }
+        private async Task HandleAddPosCommandAsync(ITelegramBotClient bot, Message msg, string args, CancellationToken ct)
+        {
+            // (опционально) Разрешить только авторизованным/админам
+            //var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From!.Id);
+            //if (!isAuthorized)
+            //{
+            //    await bot.SendMessage(msg.Chat.Id, "Команда недоступна. Отправьте контакт через /start.", cancellationToken: ct);
+            //    return;
+            //}
 
+            // Ожидаемый формат: /addpos Имя;Цена;[ImageUrl]
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "Формат: /addpos Имя;Цена;[ImageUrl]\nНапр.: /addpos Бургер;199.9;https://img",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var parts = args.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (parts.Length < 2)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "Нужно указать значения полей Имя и Цена. Пример: /addpos Бургер;199.9;[тут может быть картинка]",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var name = parts[0];
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+            {
+                await bot.SendMessage(msg.Chat.Id, "Имя обязательно и ≤ 100 символов.", cancellationToken: ct);
+                return;
+            }
+
+            if (!decimal.TryParse(parts[1],
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var price) || price <= 0)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "Цена некорректна. Используйте десятичную Точку: 199.9",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var image = parts.Length >= 3 ? parts[2] : null;
+
+            var pos = new Position
+            {
+                Name = name.Trim(),
+                Price = price,
+                Status = PositionStatus.Active,
+                Image = string.IsNullOrWhiteSpace(image) ? null : image.Trim()
+            };
+            try
+            {
+                pos = await _menuService.CreateAsync(pos, ct);
+
+                await bot.SendMessage(msg.Chat.Id,
+                    $"✅ Добавлено: #{pos.PositionId} • {pos.Name} — {pos.Price:0.##}",
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                await _bot.SendMessage(msg.Chat.Id,
+                    "❌ Не удалось добавить позицию. Попробуйте позже.");
+                Console.WriteLine($"[AddPos ERROR]: {ex}"); 
+            }
+            
+        }
+
+        private async Task HandleDelPosCommandAsync(ITelegramBotClient bot, Message msg, string args, CancellationToken ct)
+        {
+            // (опционально) Разрешить только авторизованным/админам
+            //var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From!.Id);
+            //if (!isAuthorized)
+            //{
+            //    await bot.SendMessage(msg.Chat.Id, "Команда недоступна. Отправьте контакт через /start.", cancellationToken: ct);
+            //    return;
+            //}
+
+            // Ожидаемый формат: /delpos <id>
+            if (!int.TryParse(args, out var id) || id <= 0)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "Формат: /delpos <id>\nНапр.: /delpos 12",
+                    cancellationToken: ct);
+                return;
+            }
+
+            var ok = await _menuService.DeleteAsync(id, ct);
+            await bot.SendMessage(msg.Chat.Id, ok ? $"🗑️ Удалено: #{id}" : "Не найдено.", cancellationToken: ct);
+        }
         private async Task HandleCallbackAsync(ITelegramBotClient bot, CallbackQuery cq, CancellationToken ct)
         {
             if (cq.Data is null) return;
@@ -242,7 +350,7 @@ namespace FetchFood.Services
             {
                 // показать меню заново
                 await HandleMenuCommandAsync(bot, cq.Message!, ct);
-                await bot.AnswerCallbackQuery(cq.Id, cancellationToken: ct); // v22: без Async
+                await bot.AnswerCallbackQuery(cq.Id, cancellationToken: ct);
                 return;
             }
 

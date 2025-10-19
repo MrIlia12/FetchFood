@@ -15,7 +15,7 @@ namespace DataAccess.Repositories.Implementations
             _scopeFactory = scopeFactory;
         }
 
-        public async Task<Position> GetPositionByIdAsync(int positionId, CancellationToken ct = default)
+        public async Task<Position?> GetPositionByIdAsync(int positionId, CancellationToken ct = default)
         {
             using var scope = _scopeFactory.CreateScope();
             DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
@@ -38,19 +38,13 @@ namespace DataAccess.Repositories.Implementations
         public async Task<bool> RemovePositionByIdAsync(int positionId, CancellationToken ct = default)
         {
             using var scope = _scopeFactory.CreateScope();
-            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            Position existingPosition = await dbContext.Positions.FirstOrDefaultAsync(x => x.PositionId == positionId, ct);
-            if (existingPosition != null)
-            {
-                dbContext.Positions.Remove(existingPosition);
-                return (await dbContext.SaveChangesAsync(ct)) > 0;
-            }
-            else
-            {
-                // Если позиции с таким Id нет, ничего не меняем
-            }
-            return true;
+            var existing = await dbContext.Positions.FirstOrDefaultAsync(x => x.PositionId == positionId, ct);
+            if (existing is null) return false;
+
+            dbContext.Positions.Remove(existing);
+            return (await dbContext.SaveChangesAsync(ct)) > 0;
         }
         public async Task<bool> UpdatePositionAsync(Position position, CancellationToken ct = default)
         {
@@ -83,17 +77,18 @@ namespace DataAccess.Repositories.Implementations
         }
         public async Task<List<Position>> GetPositionsByNameAsync(string namePart, CancellationToken ct = default)
         {
-            namePart = namePart.Trim();
-            if (string.IsNullOrEmpty(namePart))
-            {
-                return new List<Position>();
-            }
+            namePart = namePart?.Trim() ?? string.Empty;
+            if (namePart.Length == 0) return new List<Position>();
 
             using var scope = _scopeFactory.CreateScope();
-            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            List<Position> positions = await dbContext.Positions.Where(x => x.Name.Contains(namePart, StringComparison.CurrentCultureIgnoreCase)).ToListAsync(ct);
-            return positions;
+            string pattern = $"%{namePart}%";
+            return await dbContext.Positions
+                .AsNoTracking()
+                .Where(p => EF.Functions.ILike(p.Name, pattern)) 
+                .OrderBy(p => p.Name)
+                .ToListAsync(ct);
         }
     }
 }

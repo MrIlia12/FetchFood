@@ -45,5 +45,18 @@ namespace BusinessLogic.Services.Menu.Implementation
             Position pos = await _positionRepository.GetPositionByIdAsync(positionId);
             return pos?.Status == PositionStatus.Active ? pos : null;
         }
+        public async Task<Position> CreateAsync(Position p, CancellationToken ct = default)
+        {
+            if (p is null) throw new ArgumentNullException(nameof(p));
+            p.Status = PositionStatus.Active;
+            p.Name = p.Name?.Trim() ?? throw new ArgumentException("Требуется имя!", nameof(p));
+            await _positionRepository.AddPositionAsync(p, ct);
+            return p;
+        }
+
+        public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+        {
+            return await _positionRepository.RemovePositionByIdAsync(id, ct);
+        }
     }
 }

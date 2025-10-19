@@ -15,7 +15,7 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        var connectionString = "";
+        var connectionString = "Server=localhost;port=9432;database=FetchFood;User ID=postgres;password=1882320;";
 
         var app = ConfigureApp(args, connectionString);
         
