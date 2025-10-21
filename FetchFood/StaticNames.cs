@@ -4,6 +4,10 @@
     {
         //
     }
+    public static class ApplicationInfo
+    {
+        public const string VERSION = "0.0.0.0";
+    }
     public static class BotCommands
     {
         public const string START = "/start";

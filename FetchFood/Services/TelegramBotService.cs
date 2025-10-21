@@ -224,7 +224,7 @@ namespace FetchFood.Services
                 return;
             }
 
-            var results = await _menuService.SearchPositionsAsync(query, ct);
+            var results = await _menuService.SearchPositionsAsync(query, true, ct);
             if (results.Count == 0)
             {
                 await bot.SendMessage(msg.Chat.Id, $"Ничего не нашёл по запросу: “{query}”", cancellationToken: ct);
@@ -305,7 +305,12 @@ namespace FetchFood.Services
             };
             try
             {
-                pos = await _menuService.CreateAsync(pos, ct);
+                if(!await _menuService.CreateAsync(pos, ct))
+                {
+                    await _bot.SendMessage(msg.Chat.Id,
+                    "❌ Не удалось добавить позицию. Попробуйте позже.");
+                    Console.WriteLine($"[AddPos ERROR]: Ошибка БД.");
+                }
 
                 await bot.SendMessage(msg.Chat.Id,
                     $"✅ Добавлено: #{pos.PositionId} • {pos.Name} — {pos.Price:0.##}",
@@ -322,26 +327,68 @@ namespace FetchFood.Services
 
         private async Task HandleDelPosCommandAsync(ITelegramBotClient bot, Message msg, string args, CancellationToken ct)
         {
-            // (опционально) Разрешить только авторизованным/админам
-            //var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From!.Id);
-            //if (!isAuthorized)
-            //{
-            //    await bot.SendMessage(msg.Chat.Id, "Команда недоступна. Отправьте контакт через /start.", cancellationToken: ct);
-            //    return;
-            //}
-
-            // Ожидаемый формат: /delpos <id>
-            if (!int.TryParse(args, out var id) || id <= 0)
+            var query = args?.Trim();
+            if (string.IsNullOrWhiteSpace(query))
             {
-                await bot.SendMessage(msg.Chat.Id,
-                    "Формат: /delpos <id>\nНапр.: /delpos 12",
+                await bot.SendMessage(
+                    msg.Chat.Id,
+                    "Формат: /delpos <название>\nНапр.: /delpos Бургер",
                     cancellationToken: ct);
                 return;
             }
 
-            var ok = await _menuService.DeleteAsync(id, ct);
-            await bot.SendMessage(msg.Chat.Id, ok ? $"🗑️ Удалено: #{id}" : "Не найдено.", cancellationToken: ct);
+            try
+            {
+                // ищем по всему списку позиций 
+                var matches = await _menuService.SearchPositionsAsync(query, false, ct);
+
+                if (matches.Count == 0)
+                {
+                    await bot.SendMessage(msg.Chat.Id, "❌ Позиции не найдены.", cancellationToken: ct);
+                    return;
+                }
+
+                // если совпадение одно — удаляем
+                if (matches.Count == 1)
+                {
+                    var p = matches[0];
+                    var ok = await _menuService.DeleteAsync(p.PositionId, ct);
+                    await bot.SendMessage(
+                        msg.Chat.Id,
+                        ok ? $"🗑️ Удалено: {p.Name} (#{p.PositionId})" : "Не удалось удалить позицию.",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                // несколько совпадений — пробуем точное совпадение по имени (без учёта регистра)
+                var exact = matches.FirstOrDefault(p =>
+                    string.Equals(p.Name, query, StringComparison.OrdinalIgnoreCase));
+
+                if (exact is not null)
+                {
+                    var ok = await _menuService.DeleteAsync(exact.PositionId, ct);
+                    await bot.SendMessage(
+                        msg.Chat.Id,
+                        ok ? $"🗑️ Удалено: {exact.Name} (#{exact.PositionId})" : "Не удалось удалить позицию.",
+                        cancellationToken: ct);
+                    return;
+                }
+
+                // иначе — просим уточнить (покажем до 10 вариантов)
+                var list = string.Join("\n", matches.Take(10).Select(p => $"#{p.PositionId}: {p.Name} ({p.Price:F2})"));
+                await bot.SendMessage(
+                    msg.Chat.Id,
+                    $"Найдено несколько позиций:\n{list}\n\n" +
+                    "Уточните название (напр.: `/delpos Бургер классик`) ",
+                    cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                await bot.SendMessage(msg.Chat.Id, "⚠️ Ошибка при удалении позиции.", cancellationToken: ct);
+                Console.WriteLine($"[DelPos ERROR]: {ex}");
+            }
         }
+
         private async Task HandleCallbackAsync(ITelegramBotClient bot, CallbackQuery cq, CancellationToken ct)
         {
             if (cq.Data is null) return;
