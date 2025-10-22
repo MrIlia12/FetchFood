@@ -10,6 +10,8 @@ using FetchFood.Abstractions;
 using DataAccess.EntityFramework;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Implemenatation;
+using BusinessLogic.Services.Menu.Abstractions;
+using BusinessLogic.Services.Menu.Implementation;
 
 public static class Program
 {
@@ -67,6 +69,7 @@ public static class Program
         .AddTransient<IAuthorizationService, AuthorizationService>()
         .AddTransient<ITelegramBotService, TelegramBotService>()
         .AddTransient<IAdministrationService, AdministrationService>()
+        .AddTransient<IMenuService, MenuService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
     }
 
@@ -74,6 +77,7 @@ public static class Program
     {
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
+            .AddTransient<IPositionRepository, PositionRepository>()
             .AddTransient<IOrderRepository, OrderRepository>();
     }
 

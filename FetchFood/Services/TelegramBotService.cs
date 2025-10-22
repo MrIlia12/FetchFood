@@ -8,6 +8,8 @@ using Telegram.Bot.Types.ReplyMarkups;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using DataAccess.Entities.Models;
+using BusinessLogic.Services.Menu.Abstractions;
+using BusinessLogic.Services.Menu.Implementation;
 
 namespace FetchFood.Services
 {
@@ -18,14 +20,16 @@ namespace FetchFood.Services
         private readonly CancellationTokenSource _cts = new();
         private readonly IAuthorizationService _authorizationService;
         private readonly IAdministrationService _administrationService;
+        private readonly IMenuService _menuService;
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
+            _menuService = menuService;
         }
 
         public async Task StartAsync(string token)

@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BusinessLogic.Services.Administration\BusinessLogic.Services.Administration.csproj" />
     <ProjectReference Include="..\BusinessLogic.Services.Authorization\BusinessLogic.Services.Authorization.csproj" />
+    <ProjectReference Include="..\BusinessLogic.Services.Menu\BusinessLogic.Services.Menu.csproj" />
     <ProjectReference Include="..\ClassLibrary2\DataAccess.Repositories.Implementations.csproj" />
     <ProjectReference Include="..\DataAccess.EntityFramework\DataAccess.EntityFramework.csproj" />
   </ItemGroup>
