@@ -8,6 +8,8 @@ using DataAccess.Repositories.Implementations;
 using BusinessLogic.Services.Authorization.Abstractions;
 using FetchFood.Abstractions;
 using DataAccess.EntityFramework;
+using BusinessLogic.Services.Menu.Abstractions;
+using BusinessLogic.Services.Menu.Implementation;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Implemenatation;
 
@@ -68,6 +70,9 @@ public static class Program
         .AddTransient<ITelegramBotService, TelegramBotService>()
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
+        .AddTransient<IMenuService, MenuService>()
+        .AddTransient<IPositionRepository, PositionRepository>()
+        .AddTransient<ITelegramBotService, TelegramBotService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)

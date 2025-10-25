@@ -4,16 +4,24 @@
     {
         //
     }
-    internal static class BotCommands
+    public static class ApplicationInfo
+    {
+        public const string VERSION = "0.0.0.0";
+    }
+    public static class BotCommands
     {
         public const string START = "/start";
         public const string HELP = "/help";
+        public const string MENU = "/menu";
+        public const string FIND = "/find";
+        public const string ADDPOS = "/addpos"; 
+        public const string DELPOS = "/delpos";
         public const string GETORDERS = "GetOrder";
         public const string TOORDERMENU = "ToOrderMenu";
         public const string ORDERNEXTSTEP = "NextStep";
         public const string ORDERDELETE = "DeleteOrder";
     }
-    internal static class LogMessages
+    public static class LogMessages
     {
         public static string ERROR = "Ошибка";
     }

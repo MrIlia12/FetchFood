@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAccess.Repositories.Abs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAccess.Repositories.Implementations", "..\ClassLibrary2\DataAccess.Repositories.Implementations.csproj", "{23B32031-5CBB-470D-A5E7-95059AADACCD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusinessLogic.Services.Menu", "..\BusinessLogic.Services.Menu\BusinessLogic.Services.Menu.csproj", "{383D58B6-8A17-39A2-EDA5-3C859BC8CD70}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusinessLogic.Services.Administration", "..\BusinessLogic.Services.Administration\BusinessLogic.Services.Administration.csproj", "{CF50DBB9-6AA9-4409-AF6F-B2C47A396F9E}"
 EndProject
 Global
@@ -66,6 +68,10 @@ Global
 		{CF50DBB9-6AA9-4409-AF6F-B2C47A396F9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF50DBB9-6AA9-4409-AF6F-B2C47A396F9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF50DBB9-6AA9-4409-AF6F-B2C47A396F9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{383D58B6-8A17-39A2-EDA5-3C859BC8CD70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{383D58B6-8A17-39A2-EDA5-3C859BC8CD70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{383D58B6-8A17-39A2-EDA5-3C859BC8CD70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{383D58B6-8A17-39A2-EDA5-3C859BC8CD70}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -77,6 +83,7 @@ Global
 		{BE44A786-0647-497F-ACC6-CB6CA1D0D260} = {81CBF4E8-B348-404A-999A-8F08BAF705D5}
 		{23B32031-5CBB-470D-A5E7-95059AADACCD} = {81CBF4E8-B348-404A-999A-8F08BAF705D5}
 		{CF50DBB9-6AA9-4409-AF6F-B2C47A396F9E} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
+		{383D58B6-8A17-39A2-EDA5-3C859BC8CD70} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A9F41D09-7FD6-41F2-9444-11C21D85508C}
