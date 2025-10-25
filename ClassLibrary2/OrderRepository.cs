@@ -15,7 +15,7 @@ namespace DataAccess.Repositories.Implementations
             _scopeFactory = scopeFactory;
         }
 
-        public async Task<bool> AddOrderAsync(Order order)
+        public async Task<bool> AddOrderAsync(Orders order)
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
@@ -25,23 +25,23 @@ namespace DataAccess.Repositories.Implementations
             return true;
         }
 
-        public async Task<Order> GetOrderByIdAsync(int id)
+        public async Task<Orders> GetOrderByIdAsync(int id)
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            var result = await dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
+            var result = await dbContext.Orders.FirstOrDefaultAsync(x => x.OrderId == id);
             return result;
         }
 
-        public async Task<bool> UpdateOrderAsync(Order order)
+        public async Task<bool> UpdateOrderAsync(Orders order)
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            var oldOrder = await dbContext.Orders.FirstOrDefaultAsync(x =>x.Id == order.Id);
-            oldOrder.UserId = order.UserId;
-            oldOrder.CourierId = order.CourierId;
+            var oldOrder = await dbContext.Orders.FirstOrDefaultAsync(x =>x.OrderId == order.OrderId);
+            oldOrder.IdUser = order.IdUser;
+            ////oldOrder.CourierId = order.CourierId;
             oldOrder.Status = order.Status;
             oldOrder.Price = order.Price;
             oldOrder.DateOrder = order.DateOrder;
@@ -54,7 +54,7 @@ namespace DataAccess.Repositories.Implementations
         /// <summary>
         /// Получает заказ по порядковому номеру.
         /// </summary>
-        public async Task<Order[]> GetOrdersAsync()
+        public async Task<Orders[]> GetOrdersAsync()
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
@@ -68,7 +68,7 @@ namespace DataAccess.Repositories.Implementations
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            var order = dbContext.Orders.FirstOrDefault(x => x.Id == orderId);
+            var order = dbContext.Orders.FirstOrDefault(x => x.OrderId == orderId);
             dbContext.Orders.Remove(order);
             await dbContext.SaveChangesAsync();
             return true;

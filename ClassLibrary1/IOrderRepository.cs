@@ -12,13 +12,13 @@ namespace DataAccess.Repositories.Abstractions
     /// </summary>
     public interface IOrderRepository
     {
-        Task<bool> AddOrderAsync(Order order);
+        Task<bool> AddOrderAsync(Orders order);
 
-        Task<Order> GetOrderByIdAsync(int id);
+        Task<Orders> GetOrderByIdAsync(int id);
 
-        Task<bool> UpdateOrderAsync(Order order);
+        Task<bool> UpdateOrderAsync(Orders order);
 
-        Task<Order[]> GetOrdersAsync();
+        Task<Orders[]> GetOrdersAsync();
 
         Task<bool> RemoveOrderByIdAsync(long orderId);
     }

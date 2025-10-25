@@ -27,7 +27,7 @@ namespace BusinessLogic.Services.Administration.Implemenatation
         public async Task<OrderInformation> GetOrderInformationAsync(int number)
         {
             var orders = await _orderRepository.GetOrdersAsync();
-            var user = await _userRepository.GetUserByIdAsync(orders[number].UserId);
+            var user = await _userRepository.GetUserByIdAsync(orders[number].IdUser);
             var orderPosition = number == 0
                 ? orders.Length == 1
                     ? OrderPosition.Lonely
@@ -39,8 +39,8 @@ namespace BusinessLogic.Services.Administration.Implemenatation
 
             var result = new OrderInformation
             {
-                Id = orders[number].Id.ToString(),
-                CourierId = orders[number].CourierId.ToString(),
+                Id = orders[number].OrderId.ToString(),
+                ////CourierId = orders[number].CourierId.ToString(),
                 UserName = user.Name,
                 Price = orders[number].Price.ToString(),
                 Status = orders[number].Status.ToString(),

@@ -8,9 +8,10 @@ namespace DataAccess.EntityFramework
     public class DataContext : DbContext
     {
         public DbSet<User> Users { get; set; }
+        
         public DbSet<Position> Positions { get; set; }
 
-        public DbSet<Order> Orders { get; set; }
+        public DbSet<Orders> Orders { get; set; }
 
         public DataContext(DbContextOptions<DataContext> options)
             : base(options)

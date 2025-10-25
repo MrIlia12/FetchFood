@@ -29,8 +29,7 @@ namespace FetchFood.Services
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService)
-        public TelegramBotService(IAuthorizationService authorizationService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -111,7 +110,7 @@ namespace FetchFood.Services
                         var menuKeyboard = new InlineKeyboardMarkup();
                         var menuKeyboardButtons = new List<InlineKeyboardButton>();
 
-                        if (callBackData[2] != OrderStatus.Complete.ToString())
+                        if (callBackData[2] != OrderStatus.Delivered.ToString())
                         {
                             menuKeyboardButtons.Add(new InlineKeyboardButton("Перевести заказ на следующий этап.", $"NextStep {number}"));
                         }
@@ -206,14 +205,13 @@ namespace FetchFood.Services
                         GetAdministratorConsoleAsync(msg.Chat.Id);
                         return;
                     }
-
-
-                    await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
                     else
                     {
                         // Если авторизован - предлагаем начать оформление заказа
                         await ShowOrderSuggestion(bot, msg.Chat.Id, ct);
                     }
+                    await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
+
                     break;
 
                 case BotCommands.HELP:
