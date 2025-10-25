@@ -69,10 +69,9 @@ public static class Program
         .AddTransient<IAuthorizationService, AuthorizationService>()
         .AddTransient<ITelegramBotService, TelegramBotService>()
         .AddTransient<IAdministrationService, AdministrationService>()
-        .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
+        .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
         .AddTransient<IMenuService, MenuService>()
-        .AddTransient<IPositionRepository, PositionRepository>()
-        .AddTransient<ITelegramBotService, TelegramBotService>();
+        .AddTransient<IPositionRepository, PositionRepository>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)

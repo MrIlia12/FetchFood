@@ -9,7 +9,6 @@ using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using DataAccess.Entities.Models;
 using BusinessLogic.Services.Menu.Abstractions;
-using DataAccess.Entities.Models;
 using DataAccess.Entities;
 
 namespace FetchFood.Services
@@ -25,8 +24,7 @@ namespace FetchFood.Services
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService)
-        public TelegramBotService(IAuthorizationService authorizationService, IMenuService menuService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -238,11 +236,11 @@ namespace FetchFood.Services
             return Task.CompletedTask;
         }
 
+        #region Сервис авторизации
         /// <summary>
         /// Метод запроса на предоставления контакта.
         /// </summary>
         /// <param name="chatId">Id чата.</param>
-        #region Сервис авторизации
         private async Task RequestContactAsync(long chatId)
         {
             var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
