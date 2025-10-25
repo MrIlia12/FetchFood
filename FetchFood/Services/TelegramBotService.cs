@@ -1,9 +1,12 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
+using BusinessLogic.Services.MakingOrders.Abstractions;
+using BusinessLogic.Services.MakingOrders.Implemenatation;
+using DataAccess.Entities;
+using FetchFood.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using FetchFood.Abstractions;
 using Telegram.Bot.Types.ReplyMarkups;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
@@ -18,18 +21,22 @@ namespace FetchFood.Services
     {
         private TelegramBotClient _bot;
         private readonly CancellationTokenSource _cts = new();
+        private readonly ILogger<MakingOrdersService> _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
+        private readonly IMakingOrdersService _makingOrdersService;
 
         private readonly ITelegramBotCartService _cartService;
 
         public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService)
+        public TelegramBotService(IAuthorizationService authorizationService, IMakingOrdersService makingOrdersService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
             _menuService = menuService;
+            _makingOrdersService = makingOrdersService;
         }
 
         public async Task StartAsync(string token)
@@ -163,6 +170,12 @@ namespace FetchFood.Services
                 await HandleCallbackAsync(bot, cq, ct);
                 return;
             }
+            if (update.CallbackQuery is { } callbackQuery)
+            {
+                await HandleCallbackQueryAsync(bot, callbackQuery, ct);
+                return;
+            }
+
             if (update.Message is not { } msg) return;
 
             if (msg.Type == MessageType.Contact)
@@ -182,6 +195,7 @@ namespace FetchFood.Services
                     var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
                     if (!isAuthorized)
                     {
+                        // Если не авторизован - просим контакт
                         await RequestContactAsync(msg.Chat.Id);
                         return;
                     }
@@ -195,6 +209,11 @@ namespace FetchFood.Services
 
 
                     await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
+                    else
+                    {
+                        // Если авторизован - предлагаем начать оформление заказа
+                        await ShowOrderSuggestion(bot, msg.Chat.Id, ct);
+                    }
                     break;
 
                 case BotCommands.HELP:
@@ -226,6 +245,17 @@ namespace FetchFood.Services
                     break;
 
                 default:
+                    // проверка на то, может ли быть пользователь в процессе оформления заказа
+                    OrderProcessingResult orderResult = await _makingOrdersService.ProcessUserInputAsync(msg.From.Id, text);
+
+                    if (orderResult.Success || !string.IsNullOrEmpty(orderResult.Message))
+                    {
+                        await SendOrderResultMessage(bot, msg.Chat.Id, orderResult, ct);
+                    }
+                    else
+                    {
+                        await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                    }
                     await _cartService.HandleMessageAsync(bot, msg, ct);
                     break;
             }
@@ -234,6 +264,143 @@ namespace FetchFood.Services
         {
             Console.WriteLine($"[{LogMessages.ERROR}]: {ex.Message}");
             return Task.CompletedTask;
+        }
+
+        // Показываем предложение оформить заказ с инлайн-кнопкой
+        private async Task ShowOrderSuggestion(ITelegramBotClient bot, long chatId, CancellationToken ct)
+        {
+            string message = "✅ Вы авторизованы!\n\n" +
+                          "🎉 Отлично! Теперь вы можете оформить свой заказ!\n\n" +
+                          "Готовы начать?";
+
+            // Создаем инлайн-кнопку
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("🛍️ Оформить заказ", "start_order")
+                }
+            });
+
+            await bot.SendMessage(chatId,
+                message,
+                replyMarkup: inlineKeyboard,
+                cancellationToken: ct);
+        }
+
+        // Обработка нажатий на инлайн-кнопки
+        private async Task HandleCallbackQueryAsync(ITelegramBotClient bot, CallbackQuery callbackQuery, CancellationToken ct)
+        {
+            try
+            {
+                await bot.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
+
+                if (callbackQuery.Data == "start_order")
+                {
+                    // Нажата кнопка "Оформить заказ"
+                    await bot.AnswerCallbackQuery(callbackQuery.Id, "Начинаем оформление заказа!", cancellationToken: ct);
+                    Message message = new Message
+                    {
+                        Chat = callbackQuery.Message.Chat,
+                        From = callbackQuery.From,
+                        Text = callbackQuery.Data,
+                    };
+                    await HandleOrderCommand(bot, message, ct);
+                }
+                else if (IsOrderButton(callbackQuery.Data)) // Если нажата кнопка, связанная с оформлением заказа
+                {
+                    OrderProcessingResult orderResult = await _makingOrdersService.ProcessUserInputAsync(callbackQuery.From.Id, callbackQuery.Data);
+                    await SendOrderResultMessage(bot, callbackQuery.Message.Chat.Id, orderResult, ct);
+                }
+                else
+                {
+                    await bot.AnswerCallbackQuery(callbackQuery.Id, "Неизвестная команда", cancellationToken: ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Ошибка в HandleCallbackQueryAsync: {ex}");
+                await bot.AnswerCallbackQuery(callbackQuery.Id, "Произошла ошибка", cancellationToken: ct);
+            }
+        }
+
+        // Проверка является ли callbackQuery кнопкой заказа
+        private bool IsOrderButton(string callbackData)
+        {
+            string[] orderButtons = { "add_comment", "skip_comment", "confirm_order", "cancel_order" };
+            return orderButtons.Contains(callbackData);
+        }
+
+        // Отправка результата обработки заказа
+        private async Task SendOrderResultMessage(ITelegramBotClient bot, long chatId, OrderProcessingResult result, CancellationToken ct)
+        {
+            if (result.Success)
+            {
+                if (result.HasInlineKeyboard && result.InlineKeyboard != null)
+                {
+                    await bot.SendMessage(chatId,
+                        result.Message,
+                        replyMarkup: result.InlineKeyboard,
+                        cancellationToken: ct);
+                }
+                else
+                {
+                    await bot.SendMessage(chatId,
+                        result.Message,
+                        cancellationToken: ct);
+                }
+            }
+            else
+            {
+                await bot.SendMessage(chatId,
+                    result.Message,
+                    cancellationToken: ct);
+            }
+        }
+
+        // Начало оформления заказа
+        private async Task HandleOrderCommand(ITelegramBotClient bot, Message msg, CancellationToken ct)
+        {
+            // Проверяем авторизацию
+            bool isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
+            if (!isAuthorized)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "❌ Сначала необходимо авторизоваться! Напишите /start",
+                    cancellationToken: ct);
+                return;
+            }
+
+            // TODO: Здесь будет проверка, что корзина не пуста
+            // Пока что имитируем, что корзина с товарами пуста
+            // Заглушка - потом заменить на реальную проверку
+            bool isCartEmpty = false;
+
+            if (isCartEmpty)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "🛒 Ваша корзина пуста!\n\n" +
+                    "Добавьте товары в корзину, чтобы оформить заказ.",
+                    cancellationToken: ct);
+                return;
+            }
+
+            // Начинаем процесс оформления заказа
+            bool success = await _makingOrdersService.StartOrderCreationAsync(msg.From.Id);
+            if (success)
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "📝 Введите адрес доставки в формате:\nул. <улица>, д. <номер дома>, кв. <номер квартиры>\n\n" +
+                    "Пример: ул. Ленина, д. 15, кв. 42\n\n" +
+                    "Допустимые форматы дома: 15, 15а, 15/1, 15/1а",
+                    cancellationToken: ct);
+            }
+            else
+            {
+                await bot.SendMessage(msg.Chat.Id,
+                    "❌ Не удалось начать оформление заказа. Попробуйте позже.",
+                    cancellationToken: ct);
+            }
         }
 
         #region Сервис авторизации

@@ -12,6 +12,8 @@ using BusinessLogic.Services.Menu.Abstractions;
 using BusinessLogic.Services.Menu.Implementation;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Implemenatation;
+using BusinessLogic.Services.MakingOrders.Abstractions;
+using BusinessLogic.Services.MakingOrders.Implemenatation;
 
 public static class Program
 {
@@ -19,7 +21,7 @@ public static class Program
     {
         var connectionString = "Server=localhost;port=9432;database=FetchFood;User ID=postgres;password=1882320;";
 
-        var app = ConfigureApp(args, connectionString);
+        WebApplication app = ConfigureApp(args, connectionString);
         
         app.Run( async (context) =>
         {
@@ -38,7 +40,7 @@ public static class Program
             if (string.IsNullOrEmpty(token))
                 throw new InvalidOperationException($"[{LogMessages.ERROR}]: не удалось получить токен из settings.json.");
 
-            var botService = app.Services.GetRequiredService<ITelegramBotService>();
+            ITelegramBotService botService = app.Services.GetRequiredService<ITelegramBotService>();
             
             await botService.StartAsync(token);
 
@@ -54,7 +56,7 @@ public static class Program
 
     public static WebApplication ConfigureApp(string[] args, string connectionString)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         builder.Services.ConfigureContext(connectionString);
         builder.Services.InstallServices();
@@ -72,6 +74,8 @@ public static class Program
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
         .AddTransient<IMenuService, MenuService>()
         .AddTransient<IPositionRepository, PositionRepository>();
+        .AddTransient<ITelegramBotService, TelegramBotService>()
+        .AddTransient<IMakingOrdersService, MakingOrdersService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)
@@ -79,6 +83,9 @@ public static class Program
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
             .AddTransient<IOrderRepository, OrderRepository>();
+            .AddTransient<IUserRepository, UserRepository>()
+            .AddTransient<IOrdersDataRepository, OrderDataRepository>()
+            .AddTransient<IOrdersRepository, OrdersRepository>();
     }
 
 }

@@ -19,5 +19,9 @@ namespace DataAccess.Entities
 
 
         public UserRole Role { get; set; }
+
+        // Навигационные свойства для заказов
+        public virtual ICollection<Orders> Orders { get; set; }
+        //public virtual ICollection<Orders> CourierOrders { get; set; }
     }
 }

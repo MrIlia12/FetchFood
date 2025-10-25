@@ -35,7 +35,7 @@ namespace BusinessLogic.Services.Authorization
         /// <returns>True, если авторизован.</returns>
         public async Task<bool> IsUserAuthorizedAsync(long userId)
         {
-            var user = await UserRepository.GetUserByIdAsync(userId);
+            User user = await UserRepository.GetUserByIdAsync(userId);
 
             if (user == null)
             {
