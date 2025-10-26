@@ -15,12 +15,11 @@ namespace DataAccess.Entities
 
         [Required]
         public decimal Price { get; set; }
-
         [Required]
         public PositionStatus Status { get; set; }
-
-        public string? Image { get; set; } // возможно, лучше использовать массив байт..
         public string? Ingredients { get; set; }
         public string? Description { get; set; }
+
+        public string? Image { get; set; } // возможно, лучше использовать массив байт..
     }
 }

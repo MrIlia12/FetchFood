@@ -70,6 +70,7 @@ public static class Program
         .AddTransient<ITelegramBotService, TelegramBotService>()
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<IMenuService, MenuService>()
+        .AddTransient<ITelegramBotMenuService, TelegramBotMenuService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>();
     }
 

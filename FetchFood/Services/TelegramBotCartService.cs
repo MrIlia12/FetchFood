@@ -217,8 +217,11 @@ namespace FetchFood.Services
 
         public async Task ShowMainMenuAsync(ITelegramBotClient bot, long chatId, CancellationToken ct)
         {
-            string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\n" +
-                                 "Используйте меню внизу для управления корзиной.";
+            //string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\n" +
+            //                     "Используйте меню внизу для управления корзиной."
+            //                     ;
+            // (2025-10-24) Лия: убираю приветствие в сообщении, т.к. ранее бот уже поздоровался по команде /start
+            string welcomeText = "Используйте меню внизу для управления корзиной.";
 
             await bot.SendMessage(
                 chatId: chatId,

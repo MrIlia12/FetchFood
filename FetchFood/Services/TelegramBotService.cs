@@ -8,8 +8,6 @@ using Telegram.Bot.Types.ReplyMarkups;
 using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using DataAccess.Entities.Models;
-using BusinessLogic.Services.Menu.Abstractions;
-using BusinessLogic.Services.Menu.Implementation;
 
 namespace FetchFood.Services
 {
@@ -20,11 +18,11 @@ namespace FetchFood.Services
         private readonly CancellationTokenSource _cts = new();
         private readonly IAuthorizationService _authorizationService;
         private readonly IAdministrationService _administrationService;
-        private readonly IMenuService _menuService;
+        private readonly ITelegramBotMenuService _menuService;
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, ITelegramBotMenuService menuService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -35,7 +33,7 @@ namespace FetchFood.Services
         public async Task StartAsync(string token)
         {
             _bot = new TelegramBotClient(token);
-            User user = await _bot.GetMe(_cts.Token);
+            Telegram.Bot.Types.User user = await _bot.GetMe(_cts.Token);
             Console.WriteLine($"@{user.Username} готов к работе.");
 
             ReceiverOptions receiverOptions = new ReceiverOptions
@@ -65,6 +63,16 @@ namespace FetchFood.Services
                 if (update.CallbackQuery is not { } callBack) return;
 
                 var callBackData = callBack.Data.Split(' ');
+
+                // обработка ответов на команды меню
+                if (callBackData[0].Contains(BotCommands.MENU))
+                {
+                    await _menuService.HandleMenuCommandAsync(bot, callBack.Message.Chat.Id, callBack.Data, ct);
+                    await _bot.AnswerCallbackQuery(callBack.Id, cancellationToken: ct);
+                    return;
+                }
+                //
+
                 var number = callBackData.Length > 1 ? Convert.ToInt32(callBackData[1]) : 0;
 
                 switch (callBackData[0])
@@ -167,6 +175,13 @@ namespace FetchFood.Services
             }
 
             if (msg.Text is not { } text) return;
+            
+            // если была подана текстовая команда управления меню
+            if (msg.Text.StartsWith(BotCommands.MENU))
+            {
+                await _menuService.HandleMenuCommandAsync(bot, msg.Chat.Id, msg.Text, ct);
+                return;
+            }
 
             string? command = text.Split(' ')[0];
 
@@ -188,8 +203,10 @@ namespace FetchFood.Services
                         GetAdministratorConsoleAsync(msg.Chat.Id);
                         return;
                     }
+                    // Показываем кнопку меню
+                    await _menuService.ShowMenuButton(bot, string.Empty, msg.Chat.Id, ct);
 
-
+                    // Показываем меню управления корзиной 
                     await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
                     break;
 
@@ -202,7 +219,7 @@ namespace FetchFood.Services
                     break;
             }
         }
-
+        #region Сервис авторизации
         /// <summary>
         /// Метод запроса на предоставления контакта.
         /// </summary>
@@ -278,5 +295,6 @@ namespace FetchFood.Services
             Console.WriteLine($"[{LogMessages.ERROR}]: {ex.Message}");
             return Task.CompletedTask;
         }
+        #endregion
     }
 }
