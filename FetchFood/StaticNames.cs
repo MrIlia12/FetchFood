@@ -20,6 +20,10 @@
         public const string TOORDERMENU = "ToOrderMenu";
         public const string ORDERNEXTSTEP = "NextStep";
         public const string ORDERDELETE = "DeleteOrder";
+        public const string SHOWCART = "🛒 Показать корзину";
+        public const string ADDITEM = "➕ Добавить товар";
+        public const string DELETEITEM = "➖ Удалить товар";
+        public const string CLEARCART = "🗑️ Очистить корзину";
     }
     public static class LogMessages
     {
