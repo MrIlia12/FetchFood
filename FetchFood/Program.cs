@@ -73,7 +73,7 @@ public static class Program
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
         .AddTransient<IMenuService, MenuService>()
-        .AddTransient<IPositionRepository, PositionRepository>()
+		.AddTransient<ITelegramBotMenuService, TelegramBotMenuService>()
         .AddTransient<IMakingOrdersService, MakingOrdersService>();
     }
 
@@ -81,6 +81,7 @@ public static class Program
     {
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
+			.AddTransient<IPositionRepository, PositionRepository>()
             .AddTransient<IOrderRepository, OrderRepository>()
             .AddTransient<IOrdersDataRepository, OrderDataRepository>()
             .AddTransient<IOrdersRepository, OrdersRepository>();
