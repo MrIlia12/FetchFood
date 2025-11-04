@@ -36,23 +36,6 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
         public async Task<bool> StartOrderCreationAsync(long userId)
         {
-            try
-            {
-                // Проверяем авторизацию пользователя
-                if (!await _authorizationService.IsUserAuthorizedAsync(userId))
-                {
-                    _logger.LogWarning($"Пользователь {userId} не авторизован");
-                    return false;
-                }
-
-                // Дополнительно проверяем, что пользователь существует в базе
-                User user = await _userRepository.GetUserByIdAsync(userId);
-                if (user == null)
-                {
-                    _logger.LogWarning($"Пользователь {userId} не найден в базе данных");
-                    return false;
-                }
-
                 // Создаем временные данные для заказа
                 UserOrderData orderData = new UserOrderData
                 {
@@ -65,19 +48,11 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 await _ordersDataRepository.SaveOrderDataAsync(orderData);
                 _logger.LogInformation($"Начат процесс оформления заказа для пользователя {userId}");
                 return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ошибка при начале оформления заказа для пользователя {userId}");
-                return false;
-            }
         }
 
         public async Task<OrderProcessingResult> ProcessUserInputAsync(long userId, string message)
         {
-            try
-            {
-                // Получаем текущие данные заказа из репозитория черновиков
+                // Получаем текущие данные заказа из репозитория черновых заказов
                 UserOrderData orderData = await _ordersDataRepository.GetOrderDataAsync(userId);
                 if (orderData == null)
                 {
@@ -98,53 +73,25 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 };
 
                 return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ошибка при обработке ввода пользователя {userId}");
-                return new OrderProcessingResult
-                {
-                    Success = false,
-                    Message = "❌ Произошла ошибка при обработке данных. Попробуйте еще раз."
-                };
-            }
         }
 
         public async Task<bool> CancelOrderCreationAsync(long userId)
         {
-            try
-            {
-                // Удаляем временные данные заказа из репозитория черновиков
+                // Удаляем временные данные заказа из репозитория черновых заказов
                 await _ordersDataRepository.DeleteOrderDataAsync(userId);
                 _logger.LogInformation($"Оформление заказа отменено для пользователя {userId}");
                 return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ошибка при отмене оформления заказа для пользователя {userId}");
-                return false;
-            }
         }
 
         public async Task<Orders> GetCurrentOrderAsync(long userId)
         {
-            try
-            {
                 // Получаем последний заказ пользователя из репозитория оформленных заказов
                 return await _ordersRepository.GetUserCurrentOrderAsync(userId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ошибка при получении текущего заказа для пользователя {userId}");
-                return null;
-            }
         }
 
         // Сохраняем оформленный заказ в бд
         public async Task<bool> CompleteOrderAsync(long userId)
         {
-            try
-            {
                 // Получаем временные данные заказа
                 UserOrderData orderData = await _ordersDataRepository.GetOrderDataAsync(userId);
                 if (orderData == null)
@@ -172,12 +119,6 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 _logger.LogInformation($"Заказ №{createdOrder.OrderId} успешно создан для пользователя {userId}");
                 return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Ошибка при завершении заказа для пользователя {userId}");
-                return false;
-            }
         }
 
         #region Methods
@@ -204,6 +145,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 // Сохраняем адрес во временные данные
                 orderData.Address = FormatAddress(message);
+                // Меняем состояние
                 orderData.CurrentState = OrderStatus.WaitingForComment;
 
                 // Обновляем временные данные в репозитории черновиков
@@ -246,7 +188,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 };
             }
 
-            // Обрабатываем команды от кнопок (независимо от текущего состояния)
+            // Обрабатываем команды от кнопок
             if (message == "skip_comment")
             {
                 // Пользователь выбрал "нет" - пропускаем комментарий
@@ -272,6 +214,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             else if (orderData.CurrentState == OrderStatus.WaitingForCommentText)
             {
                 // Пользователь ввел текст комментария
+                // Если длиннее 1000 символов, то обрезаем строку до 1000, убираем лишние пробелы
                 orderData.Comment = message.Trim().Length > 1000
                     ? message.Trim().Substring(0, 1000)
                     : message.Trim();
@@ -463,9 +406,8 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 @"^\s*улица",                   // улица
             };
 
-            // Проверяем, начинается ли адрес с любого из паттернов
-            bool isValidStart = validStartPatterns.Any(pattern =>
-                Regex.IsMatch(lowerAddress, pattern));
+            // Проверяем начинается ли адрес с любого из паттернов
+            bool isValidStart = validStartPatterns.Any(pattern => Regex.IsMatch(lowerAddress, pattern));
 
             if (!isValidStart)
             {
@@ -485,7 +427,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 }
             }
 
-            // Проверяем, есть ли мусор (цифры/непонятные символы) перед названием улицы
+            // Проверяем есть ли мусор (цифры/непонятные символы) перед названием улицы
             if (addressWithoutStreet.Length > 0)
             {
                 // Проверяем, что после префикса улицы идет нормальное название (не цифры и не мусор)

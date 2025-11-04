@@ -7,6 +7,5 @@ namespace FetchFood.Abstractions
     {
         Task ShowMainMenuAsync(ITelegramBotClient bot, long chatId, CancellationToken ct);
         Task HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct);
-
     }
 }

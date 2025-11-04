@@ -1,5 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using System.Security.AccessControl;
 using System.Text;
+using BusinessLogic.Services.MakingOrders.Implemenatation;
 using FetchFood.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -19,8 +21,12 @@ namespace FetchFood.Services
         private readonly CartService _cartService = new();
         // для отслеживания состояния каждого пользователя (например, ожидание ввода данных)
         private readonly ConcurrentDictionary<long, string> _userState = new();
-
-        public TelegramBotCartService() { }
+        // Сервис для оформления заказов
+        private readonly ITelegramBotMakingOrdersService _makingOrdersService;
+        public TelegramBotCartService(ITelegramBotMakingOrdersService makingOrdersService)
+        {
+            _makingOrdersService = makingOrdersService;
+        }
 
         /// <summary>
         /// Создает и возвращает клавиатуру с главным меню.
@@ -114,7 +120,6 @@ namespace FetchFood.Services
                         cancellationToken: ct
                     );
                     break;
-
                 default:
                     await bot.SendMessage(
                         chatId: userId,
@@ -235,6 +240,8 @@ namespace FetchFood.Services
         private async Task ShowCartAsync(ITelegramBotClient bot, long userId, CancellationToken ct)
         {
             if (bot is null) return;
+            // УДАЛИТЬ ПЕРЕД СЛИЯНИЕМ С ОСНОВНОЙ ВЕТКОЙ
+            CartTestDataInitializer.InitializeTestData(_cartService, userId);
             var cart = _cartService.GetCart(userId);
 
             // Если корзина пуста, сообщаем об этом
@@ -256,10 +263,20 @@ namespace FetchFood.Services
             }
             cartContent.AppendLine($"\n*Итого:* `${_cartService.GetTotal(userId):F2}`");
 
+            // Создаем инлайн-кнопку для оформления заказа
+            var inlineKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("✅ Оформить заказ", "start_order")
+                }
+            });
+
             await bot.SendMessage(
                 chatId: userId,
                 text: cartContent.ToString(),
                 parseMode: ParseMode.Markdown,
+                replyMarkup: inlineKeyboard,
                 cancellationToken: ct
             );
         }

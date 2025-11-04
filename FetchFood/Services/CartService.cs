@@ -143,4 +143,23 @@ namespace FetchFood.Services
             }
         }
     }
+    // ====================================================================
+    // ТЕСТОВЫЕ ДАННЫЕ
+    // ЭТОТ БЛОК УДАЛИТЬ ПЕРЕД СЛИЯНИЕМ С ОСНОВНОЙ ВЕТКОЙ
+    // ====================================================================
+    public static class CartTestDataInitializer
+    {
+        public static void InitializeTestData(CartService cartService, long userId)
+        {
+            // Очищаем возможные старые данные
+            cartService.ClearCart(userId);
+
+            // Добавляем тестовые товары
+            cartService.AddToCart(userId, "🍔 Классический бургер", 2, 299.99m);
+            cartService.AddToCart(userId, "🍟 Картофель фри", 1, 149.50m);
+            cartService.AddToCart(userId, "🥤 Кола", 1, 99.00m);
+            cartService.AddToCart(userId, "🍕 Пицца Маргарита", 1, 450.00m);
+            cartService.AddToCart(userId, "🥗 Цезарь с курицей", 1, 280.00m);
+        }
+    }
 }
