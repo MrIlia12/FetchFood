@@ -188,12 +188,6 @@ namespace FetchFood.Services
 
             if (update.Message is not { } msg) return;
 
-            if (msg.Type == MessageType.Contact)
-            {
-                await HandleContactMessage(msg);
-                return;
-            }
-
             if (msg.Text is not { } text) return;
 			
 			// если была подана текстовая команда управления меню
@@ -209,18 +203,9 @@ namespace FetchFood.Services
                 case BotCommands.START:
                     await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
 
-                    var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
-                    if (!isAuthorized)
-                    {
-                        // Если не авторизован - просим контакт
-                        await RequestContactAsync(msg.Chat.Id);
-                        return;
-                    }
-
                     var isAdministrator = await _authorizationService.IsUserAdministratorAsync(msg.From.Id);
                     if (isAdministrator)
                     {
-                        GetAdministratorConsoleAsync(msg.Chat.Id);
                         return;
                     }
                     else
