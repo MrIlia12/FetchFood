@@ -66,6 +66,12 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+            if (update.Type is UpdateType.Message)
+            {
+                var commandHandler = new BotAuthorizationHandler(update, bot, _authorizationService);
+                commandHandler.Invoke();
+            }
+
             // Обработка событий по callback системе.
             if (update.Type is UpdateType.CallbackQuery)
             {
@@ -208,12 +214,6 @@ namespace FetchFood.Services
 
             if (update.Message is not { } msg) return;
 
-            if (msg.Type == MessageType.Contact)
-            {
-                await HandleContactMessage(msg);
-                return;
-            }
-
             if (msg.Text is not { } text) return;
 
             // если была подана текстовая команда управления меню
@@ -229,18 +229,9 @@ namespace FetchFood.Services
                 case BotCommands.START:
                     await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
 
-                    var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(msg.From.Id);
-                    if (!isAuthorized)
-                    {
-                        // Если не авторизован - просим контакт
-                        await RequestContactAsync(msg.Chat.Id);
-                        return;
-                    }
-
                     var isAdministrator = await _authorizationService.IsUserAdministratorAsync(msg.From.Id);
                     if (isAdministrator)
                     {
-                        GetAdministratorConsoleAsync(msg.Chat.Id);
                         return;
                     }
                     else
@@ -415,79 +406,6 @@ namespace FetchFood.Services
                     cancellationToken: ct);
             }
         }
-
-        #region Сервис авторизации
-        /// <summary>
-          		/// Метод запроса на предоставления контакта.
-          		/// </summary>
-          		/// <param name="chatId">Id чата.</param>
-        private async Task RequestContactAsync(long chatId)
-        {
-            var requestContactKeyboard = new ReplyKeyboardMarkup(new[]
-            {
-                 new[]
-                 {
-                     KeyboardButton.WithRequestContact("📞 Поделиться контактом.")
-                 }
-             })
-            {
-                ResizeKeyboard = true,
-                OneTimeKeyboard = true
-            };
-
-            await _bot.SendMessage(
-                chatId: chatId,
-                text: "👋 Добро пожаловать! Чтобы использовать бота, пожалуйста поделитесь контактом.",
-                replyMarkup: requestContactKeyboard);
-        }
-
-        private async Task GetAdministratorConsoleAsync(long chatId)
-        {
-            var requestContactKeyboard = new InlineKeyboardMarkup(new[]
-            {
-                 new[]
-                 {
-                    // --- ВОЗВРАЩЕНО (Изменение 4 отменено) ---
-  					new InlineKeyboardButton("Перейти к списку заказов", "GetOrder")
-                 }
-             });
-
-            await _bot.SendMessage(
-                chatId: chatId,
-                text: "Ваша роль - администратор.",
-                replyMarkup: requestContactKeyboard);
-        }
-
-        private async Task HandleContactMessage(Message message)
-        {
-            var user = new DataAccess.Entities.User
-            {
-                TelegramUserId = message.From.Id,
-                Name = message.Contact.FirstName,
-                PhoneNumber = message.Contact.PhoneNumber,
-                Role = DataAccess.Entities.Models.UserRole.User,
-            };
-
-            var result = await _authorizationService.AuthorizeUserAsync(user);
-
-            if (result)
-            {
-                // Remove the contact request keyboard
-                var removeKeyboard = new ReplyKeyboardRemove();
-
-                await _bot.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: "✅ Спасибо! Ваша контактная информация успешно сохранена.",
-                    replyMarkup: removeKeyboard);
-            }
-            else
-            {
-                await _bot.SendMessage(
-                chatId: message.Chat.Id,
-                text: "❌ Произошла ошибка, пожалуйста попробуйте позже.");
-            }
-        }
-        #endregion
     }
 }
 

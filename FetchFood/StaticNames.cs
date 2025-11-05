@@ -46,6 +46,7 @@
         public const string DO_NOTHING = "noop";
         public const string EMPTY = "";
     }
+
     public static class LogMessages
     {
         public static string ERROR = "Ошибка";
