@@ -28,7 +28,12 @@
         public const string ADDITEM = "➕ Добавить товар";
         public const string DELETEITEM = "➖ Удалить товар";
         public const string CLEARCART = "🗑️ Очистить корзину";
-		// команды сервиса меню
+        // --- НОВЫЕ КОНСТАНТЫ: Callback_data для Inline кнопок корзины ---
+        public const string CART_SHOW = "cart_show";
+        public const string CART_ADD = "cart_add";
+        public const string CART_REMOVE = "cart_remove";
+        public const string CART_CLEAR = "cart_clear";
+        // команды сервиса меню
         public const string MENU = "menu";
         public const string PAGE = "page";
         public const string POSITION = "pos";

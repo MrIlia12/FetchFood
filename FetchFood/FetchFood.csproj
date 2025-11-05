@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BusinessLogic.Services.Administration\BusinessLogic.Services.Administration.csproj" />
     <ProjectReference Include="..\BusinessLogic.Services.Authorization\BusinessLogic.Services.Authorization.csproj" />
+    <ProjectReference Include="..\BusinessLogic.Services.Cart\BusinessLogic.Services.Cart.csproj" />
     <ProjectReference Include="..\BusinessLogic.Services.MakingOrders\BusinessLogic.Services.MakingOrders\BusinessLogic.Services.MakingOrders.csproj" />
     <ProjectReference Include="..\BusinessLogic.Services.Menu\BusinessLogic.Services.Menu.csproj" />
     <ProjectReference Include="..\ClassLibrary2\DataAccess.Repositories.Implementations.csproj" />
