@@ -14,6 +14,8 @@ using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Implemenatation;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.Implemenatation;
+using BusinessLogic.Services.Cart.Abstractions;
+using BusinessLogic.Services.Cart.Implementation;
 
 public static class Program
 {
@@ -74,7 +76,9 @@ public static class Program
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
         .AddTransient<IMenuService, MenuService>()
 		.AddTransient<ITelegramBotMenuService, TelegramBotMenuService>()
-        .AddTransient<IMakingOrdersService, MakingOrdersService>();
+        .AddTransient<IMakingOrdersService, MakingOrdersService>()
+        .AddTransient<ICartService, CartService>();
+
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)

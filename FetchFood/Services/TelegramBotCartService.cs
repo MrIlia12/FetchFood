@@ -1,6 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
 using FetchFood.Abstractions;
+using BusinessLogic.Services.Cart.Abstractions;
+using DataAccess.Entities;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -9,95 +11,70 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FetchFood.Services
 {
-    /// <summary>
-    /// Сервис для управления корзиной товаров через Telegram бота.
-    /// </summary>
     internal class TelegramBotCartService : ITelegramBotCartService
     {
         private readonly CancellationTokenSource _cts = new();
-        // Сервис для основной логики корзины
-        private readonly CartService _cartService = new();
-        // для отслеживания состояния каждого пользователя (например, ожидание ввода данных)
+
+        // Зависимость от бизнес-логики корзины
+        private readonly ICartService _cartService;
+
+        // Отслеживает, какого ответа бот ждет от пользователя
         private readonly ConcurrentDictionary<long, string> _userState = new();
 
-        public TelegramBotCartService() { }
-
-        /// <summary>
-        /// Создает и возвращает клавиатуру с главным меню.
-        /// </summary>
-        /// <returns>Объект ReplyKeyboardMarkup с кнопками меню.</returns>
-        private ReplyKeyboardMarkup GetMainMenuKeyboard()
+        // Внедрение зависимости бизнес-логики 
+        public TelegramBotCartService(ICartService cartService)
         {
-            return new ReplyKeyboardMarkup(new[]
-            {
-                new KeyboardButton[] { "🛒 Показать корзину" },
-                new KeyboardButton[] { "➕ Добавить товар", "➖ Удалить товар" },
-                new KeyboardButton[] { "🗑️ Очистить корзину" },
-            })
-            {
-                // Автоматически изменять размер клавиатуры
-                ResizeKeyboard = true
-            };
+            _cartService = cartService;
         }
 
-        /// <summary>
-        /// Асинхронно обрабатывает входящие сообщения от пользователя.
-        /// </summary>
-        /// <param name="bot">Клиент Telegram бота.</param>
-        /// <param name="msg">Входящее сообщение.</param>
-        /// <param name="ct">Токен отмены.</param>
-        public async Task HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
+        // Создает Inline-клавиатуру для меню корзины
+        private static InlineKeyboardMarkup GetCartInlineKeyboard()
         {
-            if (bot is null || msg.Text is not { } text) return;
-            long userId = msg.Chat.Id;
-
-            // Сначала проверяем, находится ли пользователь в каком-либо состоянии (например, ожидает ввода)
-            if (_userState.TryGetValue(userId, out string? state))
+            return new InlineKeyboardMarkup(new[]
             {
-                switch (state)
+                new[]
                 {
-                    // Если пользователь добавляет товар, вызываем соответствующий метод
-                    case "awaiting_item_to_add":
-                        await AddItemFromMessageAsync(bot, msg, ct);
-                        return;
-                    // Если пользователь удаляет товар
-                    case "awaiting_item_to_remove":
-                        await RemoveItemFromMessageAsync(bot, msg, ct);
-                        return;
+                    // callback_data - это то, что бот получит при нажатии
+                    InlineKeyboardButton.WithCallbackData(BotCommands.SHOWCART, BotCommands.CART_SHOW)
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(BotCommands.ADDITEM, BotCommands.CART_ADD),
+                    InlineKeyboardButton.WithCallbackData(BotCommands.DELETEITEM, BotCommands.CART_REMOVE)
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(BotCommands.CLEARCART, BotCommands.CART_CLEAR)
                 }
-            }
+            });
+        }
 
-            // Если пользователь не находится в каком-либо состоянии, обрабатываем текстовые команды
-            switch (text)
+        // ОБРАБОТКА НАЖАТИЙ КНОПОК 
+        public async Task HandleCallbackQueryAsync(ITelegramBotClient bot, CallbackQuery query, CancellationToken ct)
+        {
+            if (query.Data == null || query.Message == null) return;
+            long userId = query.Message.Chat.Id;
+
+            // Определяем, какая кнопка была нажата, по ее callback_data
+            switch (query.Data)
             {
-                case BotCommands.START:
-                    string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\nИспользуйте меню внизу для управления корзиной.";
-
-                    await bot.SendMessage(
-                        chatId: userId,
-                        text: welcomeText,
-                        replyMarkup: GetMainMenuKeyboard(),
-                        cancellationToken: ct
-                    );
-                    break;
-
-                case BotCommands.SHOWCART:
+                case BotCommands.CART_SHOW:
                     await ShowCartAsync(bot, userId, ct);
                     break;
 
-                case BotCommands.ADDITEM:
-                    // Устанавливаем состояние пользователя на "ожидание товара для добавления"
+                case BotCommands.CART_ADD:
+                    // Устанавливаем состояние "ждем ID и кол-во"
                     _userState[userId] = "awaiting_item_to_add";
                     await bot.SendMessage(
                         chatId: userId,
-                        text: "Введите товар для добавления в формате:\n*Название Количество Цена*\n\n*Пример:* `Пицца 2 12.50`",
+                        text: "Введите товар для добавления в формате:\n*ID_Товара Количество*\n\n*Пример:* `5 2`",
                         parseMode: ParseMode.Markdown,
                         cancellationToken: ct
                     );
                     break;
 
-                case BotCommands.DELETEITEM:
-                    // Устанавливаем состояние пользователя на "ожидание товара для удаления"
+                case BotCommands.CART_REMOVE:
+                    // Устанавливаем состояние "ждем ID"
                     _userState[userId] = "awaiting_item_to_remove";
                     await bot.SendMessage(
                         chatId: userId,
@@ -106,44 +83,93 @@ namespace FetchFood.Services
                     );
                     break;
 
-                case BotCommands.CLEARCART:
-                    _cartService.ClearCart(userId);
+                // --- ОЧИСТИТЬ КОРЗИНУ ---
+                case BotCommands.CART_CLEAR:
+                    await _cartService.ClearCartAsync(userId); // Вызов бизнес-логики
                     await bot.SendMessage(
                         chatId: userId,
                         text: "✅ Корзина очищена.",
+                        replyMarkup: GetCartInlineKeyboard(), // Снова показываем меню
+                        cancellationToken: ct
+                    );
+                    break;
+            }
+
+            // Отвечаем на Callback, чтобы убрать "часики" (загрузку) на кнопке
+            try
+            {
+                await bot.AnswerCallbackQuery(query.Id, cancellationToken: ct);
+            }
+            catch (Exception)
+            {
+                // Игнорируем (если callback слишком старый, бот API выдаст ошибку)
+            }
+        }
+
+
+        public async Task HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
+        {
+            if (bot is null || msg.Text is not { } text) return;
+            long userId = msg.Chat.Id;
+
+            // 1. Проверяем, ждем ли мы ответа от пользователя (проверка состояния)
+            if (_userState.TryGetValue(userId, out string? state))
+            {
+                switch (state)
+                {
+                    // Если ждали "ID Кол-во" для добавления
+                    case "awaiting_item_to_add":
+                        await AddItemFromMessageAsync(bot, msg, ct);
+                        return; 
+
+                    // Если ждали "ID" для удаления
+                    case "awaiting_item_to_remove":
+                        await RemoveItemFromMessageAsync(bot, msg, ct);
+                        return; 
+                }
+            }
+
+            // 2. Если состояния нет, обрабатываем как обычную команду (/start)
+            switch (text)
+            {
+                case BotCommands.START:
+                    string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\nИспользуйте меню ниже для управления корзиной.";
+
+                    await bot.SendMessage(
+                        chatId: userId,
+                        text: welcomeText,
+                        replyMarkup: GetCartInlineKeyboard(), 
                         cancellationToken: ct
                     );
                     break;
 
                 default:
+                    // Реакция на любой другой текст
                     await bot.SendMessage(
                         chatId: userId,
                         text: "Неизвестная команда. Пожалуйста, используйте меню.",
+                        replyMarkup: GetCartInlineKeyboard(),
                         cancellationToken: ct
                     );
                     break;
             }
         }
 
-        /// <summary>
-        /// Добавляет товар в корзину на основе сообщения от пользователя.
-        /// </summary>
-        /// <param name="bot">Клиент Telegram бота.</param>
-        /// <param name="msg">Сообщение с данными о товаре.</param>
-        /// <param name="ct">Токен отмены.</param>
+        // добавления товара 
         private async Task AddItemFromMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
         {
             if (bot is null) return;
             long userId = msg.Chat.Id;
-            string[] parts = msg.Text!.Split(' ');
+            string[] parts = msg.Text!.Split(' '); 
 
-            // Проверяем, что сообщение содержит все необходимые части: название, количество, цена
-            if (parts.Length < 3)
+            // Проверка формата ("ID" и "Кол-во" - 2 части)
+            if (parts.Length < 2)
             {
                 await bot.SendMessage(
                     chatId: userId,
-                    text: "❌ *Неправильный формат.*\nПожалуйста, введите в формате: `Название Количество Цена`",
+                    text: "❌ *Неправильный формат.*\nПожалуйста, введите в формате: `ID_Товара Количество`",
                     parseMode: ParseMode.Markdown,
+                    replyMarkup: GetCartInlineKeyboard(), // Показываем меню
                     cancellationToken: ct
                 );
                 return;
@@ -151,43 +177,36 @@ namespace FetchFood.Services
 
             try
             {
-                // Парсим данные из сообщения
-                string foodName = parts[0];
+                int menuPositionId = int.Parse(parts[0]);
                 int quantity = int.Parse(parts[1]);
-                decimal price = decimal.Parse(parts[2].Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture);
 
-                // Добавляем товар в корзину через сервис
-                _cartService.AddToCart(userId, foodName, quantity, price);
+                await _cartService.AddItemToCartAsync(userId, menuPositionId, quantity);
 
                 await bot.SendMessage(
                     chatId: userId,
-                    text: $"✅ Товар '{foodName}' добавлен в корзину.",
+                    text: $"✅ Товар (ID {menuPositionId}) добавлен в корзину.",
+                    replyMarkup: GetCartInlineKeyboard(), // Показываем меню
                     cancellationToken: ct
                 );
             }
-            catch (Exception)
+            catch (Exception ex) 
             {
-                // Отправляем сообщение об ошибке, если данные некорректны
                 await bot.SendMessage(
                     chatId: userId,
-                    text: "❌ *Ошибка.*\nУбедитесь, что количество и цена являются числами.",
+                    text: $"❌ *Ошибка.*\n{ex.Message}\n\nУбедитесь, что ID и количество являются числами.",
                     parseMode: ParseMode.Markdown,
+                    replyMarkup: GetCartInlineKeyboard(), // Показываем меню
                     cancellationToken: ct
                 );
             }
             finally
             {
-                // Вне зависимости от результата, сбрасываем состояние пользователя
+                // Сбрасываем состояние "ожидания" в любом случае
                 _userState.TryRemove(userId, out _);
             }
         }
 
-        /// <summary>
-        /// Удаляет товар из корзины по ID, полученному в сообщении.
-        /// </summary>
-        /// <param name="bot">Клиент Telegram бота.</param>
-        /// <param name="msg">Сообщение с ID товара.</param>
-        /// <param name="ct">Токен отмены.</param>
+        // Логика удаления товара 
         private async Task RemoveItemFromMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
         {
             if (bot is null) return;
@@ -195,81 +214,92 @@ namespace FetchFood.Services
 
             try
             {
-                // Парсим ID товара из текста сообщения
-                int foodId = int.Parse(msg.Text!);
-                bool wasRemoved = _cartService.RemoveFromCart(userId, foodId);
+                int productId = int.Parse(msg.Text!);
 
-                // Формируем ответ в зависимости от того, был ли товар удален
-                string response = wasRemoved
-                    ? $"✅ Товар с ID {foodId} удален."
-                    : $"❌ Товар с ID {foodId} не найден в вашей корзине.";
+                // Проверяем, есть ли товар, ПЕРЕД удалением
+                var cart = await _cartService.GetCartAsync(userId);
+                var itemExists = cart.CartItems.Any(i => i.ProductId == productId);
 
-                await bot.SendMessage(
-                    chatId: userId,
-                    text: response,
-                    cancellationToken: ct
-                );
+                if (!itemExists)
+                {
+                    await bot.SendMessage(
+                        chatId: userId,
+                        text: $"❌ Товар с ID {productId} не найден в вашей корзине.",
+                        replyMarkup: GetCartInlineKeyboard(),
+                        cancellationToken: ct
+                    );
+                }
+                else
+                {
+                    // Если товар есть, удаляем 
+                    await _cartService.RemoveItemFromCartAsync(userId, productId);
+
+                    await bot.SendMessage(
+                        chatId: userId,
+                        text: $"✅ Товар с ID {productId} удален.",
+                        replyMarkup: GetCartInlineKeyboard(),
+                        cancellationToken: ct
+                    );
+                }
             }
-            catch (Exception)
+            catch (Exception) 
             {
                 await bot.SendMessage(
                     chatId: userId,
                     text: "❌ *Ошибка.*\nID товара должен быть числом.",
                     parseMode: ParseMode.Markdown,
+                    replyMarkup: GetCartInlineKeyboard(),
                     cancellationToken: ct
                 );
             }
             finally
             {
-                // Сбрасываем состояние пользователя
+                // Сбрасываем состояние "ожидания"
                 _userState.TryRemove(userId, out _);
             }
         }
 
-        /// <summary>
-        /// Отображает содержимое корзины пользователя.
-        /// </summary>
-        /// <param name="bot">Клиент Telegram бота.</param>
-        /// <param name="userId">ID пользователя (чата).</param>
-        /// <param name="ct">Токен отмены.</param>
+        // Показывает содержимое корзины 
         private async Task ShowCartAsync(ITelegramBotClient bot, long userId, CancellationToken ct)
         {
             if (bot is null) return;
-            var cart = _cartService.GetCart(userId);
 
-            // Если корзина пуста, сообщаем об этом
-            if (!cart.Any())
+            // Получаем данные корзины из бизнес-логики
+            var cart = await _cartService.GetCartAsync(userId);
+
+            // Проверка на пустую корзину
+            if (cart.CartItems == null || !cart.CartItems.Any())
             {
                 await bot.SendMessage(
                     chatId: userId,
                     text: "Ваша корзина пуста.",
+                    replyMarkup: GetCartInlineKeyboard(),
                     cancellationToken: ct
                 );
                 return;
             }
 
-            // Формируем текстовое представление корзины
             var cartContent = new StringBuilder("--- 🛒 Ваша корзина ---\n");
-            foreach (var item in cart)
+
+            foreach (var item in cart.CartItems)
             {
-                cartContent.AppendLine($"*ID {item.FoodId}:* `{item.Quantity} x {item.FoodName} @ ${item.Price:F2} = ${item.TotalPrice:F2}`");
+                // Используем данные из CartItem.cs
+                cartContent.AppendLine($"*ID {item.ProductId}:* `{item.Quantity} x {item.ProductName} @ {item.Price:F2} руб = {item.Quantity * item.Price:F2} руб`");
             }
-            cartContent.AppendLine($"\n*Итого:* `${_cartService.GetTotal(userId):F2}`");
+
+            // Итоговая цена из UserOrderData.cs
+            cartContent.AppendLine($"\n*Итого:* `{cart.Price:F2} руб`");
 
             await bot.SendMessage(
                 chatId: userId,
                 text: cartContent.ToString(),
                 parseMode: ParseMode.Markdown,
+                replyMarkup: GetCartInlineKeyboard(), // Показываем меню
                 cancellationToken: ct
             );
         }
 
-        /// <summary>
-        /// Отображает главное меню пользователю.
-        /// </summary>
-        /// <param name="bot">Клиент Telegram бота.</param>
-        /// <param name="chatId">ID чата для отправки сообщения.</param>
-        /// <param name="ct">Токен отмены.</param>
+        // Реализация ShowMainMenuAsync из интерфейса
         public async Task ShowMainMenuAsync(ITelegramBotClient bot, long chatId, CancellationToken ct)
         {
             string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\n" +
@@ -278,7 +308,7 @@ namespace FetchFood.Services
             await bot.SendMessage(
                 chatId: chatId,
                 text: welcomeText,
-                replyMarkup: GetMainMenuKeyboard(),
+                replyMarkup: GetCartInlineKeyboard(), // Показываем Inline-меню
                 cancellationToken: ct
             );
         }
