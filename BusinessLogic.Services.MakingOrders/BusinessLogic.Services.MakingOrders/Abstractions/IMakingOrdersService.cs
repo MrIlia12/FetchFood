@@ -47,5 +47,7 @@ namespace BusinessLogic.Services.MakingOrders.Abstractions
         /// <param name="userId">ID пользователя в Telegram</param>
         /// <returns>True, если заказ успешно завершен</returns>
         Task<bool> CompleteOrderAsync(long userId);
+
+        Task<bool> IsUserInOrderProcessAsync(long userId);
     }
 }

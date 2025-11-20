@@ -15,11 +15,10 @@ namespace FetchFood.Services
         /// <summary>
         /// ctor.
         /// </summary>
-        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService) : base(update, botClient) 
+        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService) : base(update, botClient)
         {
             _authorizationService = authorizationService;
         }
-
         public override async void Invoke()
         {
             var message = (this.Update ?? throw new ArgumentNullException("Взаимодействие с ботом не может быть нулевым.")).Message;
