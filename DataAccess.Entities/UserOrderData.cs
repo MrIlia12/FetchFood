@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace DataAccess.Entities
 {
     /// <summary>
-    /// Временные данные заказа during оформления
+    /// Временные данные заказа
     /// </summary>
     public class UserOrderData
     {
