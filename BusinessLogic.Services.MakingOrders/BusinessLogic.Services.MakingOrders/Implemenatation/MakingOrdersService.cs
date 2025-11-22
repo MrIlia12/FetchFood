@@ -329,7 +329,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         // Формируем сообщение с подтверждением заказа
         private string GetConfirmationMessage(UserOrderData orderData)
         {
-            string result = $"📋 Подтвердите заказ:\n" +
+            string result = $"📋 Подтвердите заказ:\n\n" +
                             $"👤 Имя: {orderData.Name}\n" +
                             $"📞 Телефон: {orderData.PhoneNumber}\n" +
                             $"📍 Адрес: {orderData.Address}\n";
@@ -337,11 +337,11 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             // Добавляем комментарий, если он есть
             if (!string.IsNullOrEmpty(orderData.Comment))
             {
-                result.Concat($"💬 Комментарий: {orderData.Comment}\n");
+                result = string.Concat(result, $"💬 Комментарий: {orderData.Comment}\n");
             }
 
-            result.Concat($"💰 Сумма: {orderData.Price} руб.\n");
-            result.Concat("Всё верно?\n");
+            result = string.Concat(result, $"💰 Сумма: {orderData.Price} руб.\n\n");
+            result = string.Concat(result, "Всё верно?\n");
 
             return result;
         }

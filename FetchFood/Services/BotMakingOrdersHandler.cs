@@ -25,7 +25,6 @@ namespace FetchFood.Services
                 // Обработка кнопок
                 if (Update.CallbackQuery != null)
                 {
-                    Console.WriteLine($"Update.CallbackQuery = {Update.CallbackQuery.Message}");
                     await HandleCallbackQueryAsync();
                     return;
                 }
@@ -33,7 +32,6 @@ namespace FetchFood.Services
                 // Обработка текстовых сообщений
                 if (Update.Message != null)
                 {
-                    Console.WriteLine($"Update.Message = {Update.Message}");
                     await HandleMessageAsync();
                     return;
                 }
