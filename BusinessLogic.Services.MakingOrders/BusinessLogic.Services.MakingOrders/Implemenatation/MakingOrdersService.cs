@@ -2,9 +2,7 @@
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using DataAccess.Entities;
 using DataAccess.Entities.Models;
-using DataAccess.EntityFramework;
 using DataAccess.Repositories.Abstractions;
-using DataAccess.Repositories.Implementations;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,6 +10,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace BusinessLogic.Services.MakingOrders.Implemenatation
 {
+    // Команды сервиса оформления заказа
     public static class MakingOrdersCommands
     {
         public const string AddComment = "order:add_comment";
@@ -20,12 +19,12 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         public const string CancelOrder = "order:cancel_order";
     }
 
+    // Логика сервиса оформления заказа
     public class MakingOrdersService : IMakingOrdersService
     {
         private readonly ILogger<MakingOrdersService> _logger;
         private readonly IOrdersRepository _ordersRepository;
         private readonly IOrdersDataRepository _ordersDataRepository;
-        private readonly IAuthorizationService _authorizationService;
         private readonly IUserRepository _userRepository;
 
         public MakingOrdersService(
@@ -38,10 +37,8 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             _logger = logger;
             _ordersRepository = ordersRepository;
             _ordersDataRepository = ordersDataRepository;
-            _authorizationService = authorizationService;
             _userRepository = userRepository;
         }
-
         public async Task<bool> StartOrderCreationAsync(long userId)
         {
             try
@@ -54,14 +51,14 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     CartItems = new List<CartItem>() // TODO: Здесь должна быть логика получения корзины
                 };
 
-                // Сохраняем временные данные в репозиторий черновиков
+                // Сохраняем временные данные в репозиторий временных заказов
                 await _ordersDataRepository.SaveOrderDataAsync(orderData);
                 _logger.LogInformation($"Начат процесс оформления заказа для пользователя {userId}");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Ошибка при начале оформления заказа для пользователя {userId}");
+                _logger.LogError(ex, $"Ошибка в начале оформления заказа для пользователя {userId}");
                 return false;
             }
         }
@@ -70,7 +67,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         {
             try
             {
-                // Получаем текущие данные заказа из репозитория черновиков
+                // Получаем текущие данные заказа из временных заказов
                 UserOrderData orderData = await _ordersDataRepository.GetOrderDataAsync(userId);
                 if (orderData == null)
                 {
@@ -107,7 +104,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         {
             try
             {
-                // Удаляем временные данные заказа из репозитория черновиков
+                // Удаляем временные данные заказа из репозитория
                 await _ordersDataRepository.DeleteOrderDataAsync(userId);
                 _logger.LogInformation($"Оформление заказа отменено для пользователя {userId}");
                 return true;
@@ -123,7 +120,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         {
             try
             {
-                // Получаем последний заказ пользователя из репозитория оформленных заказов
+                // Получаем текущаий (последний созданный) заказ пользователя из репозитория оформленных заказов
                 return await _ordersRepository.GetUserCurrentOrderAsync(userId);
             }
             catch (Exception ex)
@@ -173,6 +170,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             }
         }
 
+        // ВАЖНО! Чтобы не пропустить текстовые сообщения в другие сервисы
         public async Task<bool> IsUserInOrderProcessAsync(long userId)
         {
             try
@@ -189,6 +187,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         }
 
         #region Methods
+        // Адрес пользователя
         private async Task<OrderProcessingResult> ProcessAddressInputAsync(long userId, string message, UserOrderData orderData)
         {
             try
@@ -213,8 +212,6 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 // Сохраняем адрес во временные данные
                 orderData.Address = FormatAddress(message);
                 orderData.CurrentState = OrderStatus.WaitingForComment;
-
-                // Обновляем временные данные в репозитории черновиков
                 await _ordersDataRepository.SaveOrderDataAsync(orderData);
 
                 return new OrderProcessingResult
@@ -238,14 +235,14 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 _logger.LogError(ex, $"Ошибка во время обработки адреса ({userId}): {ex}");
                 throw;
             }
-        }        
+        }
 
         // Обрабатываем выбранный ответ касательно выбора ввода комментария
         private async Task<OrderProcessingResult> ProcessCommentInputAsync(long userId, string message, UserOrderData orderData)
         {
             // Если пользователь отправил комментарий вместо нажатия кнопки
             if (orderData.CurrentState == OrderStatus.WaitingForComment && message != MakingOrdersCommands.SkipComment && message != MakingOrdersCommands.AddComment)
-            {                
+            {
                 return new OrderProcessingResult
                 {
                     Success = false,
@@ -254,7 +251,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                 };
             }
 
-            // Обрабатываем команды от кнопок (независимо от текущего состояния)
+            // Обрабатываем команды от кнопок
             if (message == MakingOrdersCommands.SkipComment)
             {
                 // Пользователь выбрал "нет" - пропускаем комментарий
@@ -275,24 +272,20 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     NextState = OrderStatus.WaitingForCommentText
                 };
             }
-
-            // Если это текст комментария (в состоянии WaitingForCommentText)
-            else if (orderData.CurrentState == OrderStatus.WaitingForCommentText)
+            else if (orderData.CurrentState == OrderStatus.WaitingForCommentText) // Если это текст комментария (т.е. в состоянии WaitingForCommentText)
             {
                 // Пользователь ввел текст комментария
-                orderData.Comment = message.Trim().Length > 1000
-                    ? message.Trim().Substring(0, 1000)
-                    : message.Trim();
+                orderData.Comment = message.Trim().Length > 1000 ? message.Trim().Substring(0, 1000) : message.Trim();
 
                 return await ProceedToConfirmation(userId, orderData);
             }
             else
             {
-                // Неизвестная команда или состояние
+                // Неизвестная команда
                 return new OrderProcessingResult
                 {
                     Success = false,
-                    Message = "❌ Непонятная команда. Пожалуйста, используйте кнопки для выбора.",
+                    Message = "❌ Неизвестная команда. Пожалуйста, используйте кнопки для выбора.",
                     NextState = orderData.CurrentState
                 };
             }
@@ -314,15 +307,12 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             orderData.PhoneNumber = user.PhoneNumber;
             orderData.Name = user.Name;
             orderData.CurrentState = OrderStatus.WaitingForConfirmation;
-
             await _ordersDataRepository.SaveOrderDataAsync(orderData);
-
-            string confirmationMessage = GetConfirmationMessage(orderData);
 
             return new OrderProcessingResult
             {
                 Success = true,
-                Message = confirmationMessage,
+                Message = GetConfirmationMessage(orderData),
                 NextState = OrderStatus.WaitingForConfirmation,
                 HasInlineKeyboard = true,
                 InlineKeyboard = new InlineKeyboardMarkup(new[]
@@ -339,30 +329,28 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         // Формируем сообщение с подтверждением заказа
         private string GetConfirmationMessage(UserOrderData orderData)
         {
-            StringBuilder confirmationText = new StringBuilder();
-
-            confirmationText.AppendLine("📋 Подтвердите заказ:\n");
-            confirmationText.AppendLine($"👤 Имя: {orderData.Name}");
-            confirmationText.AppendLine($"📞 Телефон: {orderData.PhoneNumber}");
-            confirmationText.AppendLine($"📍 Адрес: {orderData.Address}");
+            string result = $"📋 Подтвердите заказ:\n" +
+                            $"👤 Имя: {orderData.Name}\n" +
+                            $"📞 Телефон: {orderData.PhoneNumber}\n" +
+                            $"📍 Адрес: {orderData.Address}\n";
 
             // Добавляем комментарий, если он есть
             if (!string.IsNullOrEmpty(orderData.Comment))
             {
-                confirmationText.AppendLine($"💬 Комментарий: {orderData.Comment}");
+                result.Concat($"💬 Комментарий: {orderData.Comment}\n");
             }
 
-            confirmationText.AppendLine($"💰 Сумма: {orderData.Price} руб.\n");
-            confirmationText.AppendLine("Всё верно?\n");
+            result.Concat($"💰 Сумма: {orderData.Price} руб.\n");
+            result.Concat("Всё верно?\n");
 
-            return confirmationText.ToString();
+            return result;
         }
 
+        // Завершение оформления заказа
         private async Task<OrderProcessingResult> ProcessConfirmationInputAsync(long userId, string message, UserOrderData orderData)
         {
             if (message == MakingOrdersCommands.ConfirmOrder)
             {
-                // Завершаем оформление заказа
                 bool success = await CompleteOrderAsync(userId);
                 if (success)
                 {
