@@ -12,6 +12,7 @@ using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using DataAccess.Entities.Models;
 using BusinessLogic.Services.Menu.Abstractions;
+using BusinessLogic.Services.Cart.Abstractions;
 
 
 namespace FetchFood.Services
@@ -26,10 +27,9 @@ namespace FetchFood.Services
         private readonly ITelegramBotMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
+        private readonly ICartService _cartService;
 
-        private readonly ITelegramBotCartService _cartService;
-
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, ITelegramBotMenuService menuService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, ITelegramBotMenuService menuService, IMakingOrdersService makingOrdersService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -88,16 +88,13 @@ namespace FetchFood.Services
                 }
                 //
 
-                // Проверяем, начинается ли callback_data с префикса "cart_
                 if (callBackData[0] == BotCommands.CART_SHOW ||
                     callBackData[0] == BotCommands.CART_ADD ||
                     callBackData[0] == BotCommands.CART_REMOVE ||
                     callBackData[0] == BotCommands.CART_CLEAR)
                 {
-                    // Если да, передаем *весь* объект callBack
-                    // в HandleCallbackQueryAsync нашего TelegramBotCartService
-                    await _cartService.HandleCallbackQueryAsync(bot, callBack, ct);
-
+                    var cartHandler = new BotCartHandler(update, bot, _cartService, ct);
+                    cartHandler.Invoke();
                     return;
                 }
 
@@ -216,6 +213,13 @@ namespace FetchFood.Services
 
             if (msg.Text is not { } text) return;
 
+            if (BotCartHandler.IsUserBusy(msg.Chat.Id))
+            {
+                var cartHandler = new BotCartHandler(update, bot, _cartService, ct);
+                cartHandler.Invoke();
+                return;
+            }
+
             // если была подана текстовая команда управления меню
             if (msg.Text.StartsWith(BotCommands.MENU))
             {
@@ -242,7 +246,12 @@ namespace FetchFood.Services
                     // Показываем кнопку меню
                     await _menuService.ShowMenuButton(bot, string.Empty, msg.Chat.Id, ct);
                     // Показываем меню управления корзиной 
-                    await _cartService.ShowMainMenuAsync(bot, msg.Chat.Id, ct);
+                    await bot.SendMessage(
+                        chatId: msg.Chat.Id,
+                        text: "Используйте меню ниже для управления корзиной.",
+                        replyMarkup: BotCartHandler.GetCartKeyboard(), // Using the new static method
+                        cancellationToken: ct
+                    );
 
                     break;
 
@@ -262,7 +271,6 @@ namespace FetchFood.Services
                     {
                         await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
                     }
-                    await _cartService.HandleMessageAsync(bot, msg, ct);
                     break;
             }
         }
