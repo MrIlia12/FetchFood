@@ -3,16 +3,11 @@ using DataAccess.EntityFramework;
 using DataAccess.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DataAccess.Repositories.Implementations
 {
     /// <summary>
-    /// Оформленные заказы
+    /// Интерфейс оформленных заказов
     /// </summary>
     public class OrdersRepository : IOrdersRepository
     {
