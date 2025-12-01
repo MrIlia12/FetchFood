@@ -4,11 +4,9 @@ using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.Implemenatation;
 using BusinessLogic.Services.Menu.Abstractions;
-using DataAccess.Entities;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
-using FetchFood.UserStates;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -25,13 +23,13 @@ namespace FetchFood.Services
         private readonly CancellationTokenSource _cts = new();
         private readonly ILogger<MakingOrdersService> _logger;
         private readonly IAuthorizationService _authorizationService;
-        private readonly ITelegramBotMenuService _menuService;
+        private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
 
         private readonly ITelegramBotCartService _cartService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, ITelegramBotMenuService menuService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -81,9 +79,17 @@ namespace FetchFood.Services
                 }
                 else
                 {
+                    // если была подана текстовая команда управления меню
+                    if (update.Message.Text != null && update.Message.Text.StartsWith(BotCommands.MENU))
+                    {
+                        var menuCommandHandler = new BotMenuHandler(update, bot, _menuService);
+                        menuCommandHandler.Invoke();
+                        return;
+                    }
                     // Проверка на авторизацию пользователя
                     var commandHandler = new BotAuthorizationHandler(update, bot, _authorizationService);
                     commandHandler.Invoke();
+                   // return;
                 }
             }
 
@@ -97,12 +103,11 @@ namespace FetchFood.Services
                 // обработка ответов на команды меню
                 if (callBackData[0].Contains(BotCommands.MENU))
                 {
-                    await _menuService.HandleMenuCommandAsync(bot, callBack.Message.Chat.Id, callBack.Data, ct);
-                    await _bot.AnswerCallbackQuery(callBack.Id, cancellationToken: ct);
+                    var menuCommandHandler = new BotMenuHandler(update, bot, _menuService);
+                    menuCommandHandler.Invoke();
                     return;
                 }
                 //
-
                 // Проверяем, начинается ли callback_data с префикса "cart_
                 if (callBackData[0] == BotCommands.CART_SHOW ||
                     callBackData[0] == BotCommands.CART_ADD ||
@@ -231,21 +236,9 @@ namespace FetchFood.Services
                 }
             }
 
-            if (update.CallbackQuery is { } callbackQuery)
-            {
-                return;
-            }
-
             if (update.Message is not { } msg) return;
 
             if (msg.Text is not { } text) return;
-
-            // если была подана текстовая команда управления меню
-            if (msg.Text.StartsWith(BotCommands.MENU))
-            {
-                await _menuService.HandleMenuCommandAsync(bot, msg.Chat.Id, msg.Text, ct);
-                return;
-            }
 
             string? command = text.Split(' ')[0];
             switch (command)

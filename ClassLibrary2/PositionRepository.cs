@@ -63,6 +63,8 @@ namespace DataAccess.Repositories.Implementations
                 existing.Name = position.Name;
                 existing.Price = position.Price;
                 existing.Status = position.Status;
+                existing.Description = position.Description;
+                existing.Ingredients = position.Ingredients;
                 existing.Image = position.Image;
             }
             return await dbContext.SaveChangesAsync(ct) > 0;

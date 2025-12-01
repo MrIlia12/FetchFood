@@ -1,19 +1,44 @@
-﻿using DataAccess.Entities.Models;
+﻿using BusinessLogic.Services.Menu.Abstractions;
+using DataAccess.Entities.Models;
 using DataAccess.Entities;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot;
-using FetchFood.Abstractions;
-using BusinessLogic.Services.Menu.Abstractions;
-using System.IO;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FetchFood.Services
 {
-    public class TelegramBotMenuService : ITelegramBotMenuService
+    class BotMenuHandler : BotCommandHandler
     {
-        public readonly IMenuService _menuService;
-        public TelegramBotMenuService(IMenuService menuService) 
+        private readonly IMenuService _menuService;
+        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService) : base(update, botClient)
         {
             _menuService = menuService;
+        }
+        public override async void Invoke()
+        {
+            long chatId = 0;
+            string? data = string.Empty;
+            // если получен сигнал от кнопки
+            if (Update.CallbackQuery != null)
+            {
+                var callbackQuery = Update.CallbackQuery;
+                chatId = callbackQuery.Message.Chat.Id;
+                data = callbackQuery.Data;
+            }
+
+            // если получено текстовое сообщение
+            else if (Update.Message != null)
+            {
+                var mssg = Update.Message;
+                chatId = mssg.Id;
+                data = mssg.Text;
+            }
+            else
+            {
+                // хз, что пришло.
+                return;
+            }
+            await HandleMenuCommandAsync(_bot, chatId, data);
         }
         #region Сервис меню
         public async Task ShowMenuButton(ITelegramBotClient bot, string mssg, long _chatId, CancellationToken ct)
@@ -40,9 +65,9 @@ namespace FetchFood.Services
             });
         }
 
-        public async Task HandleMenuCommandAsync(ITelegramBotClient bot, long _chatId, string message, CancellationToken ct)
+        public async Task HandleMenuCommandAsync(ITelegramBotClient bot, long _chatId, string message, CancellationToken ct = default)
         {
-            
+
             var messageSplitted = message.Split(':', 3, StringSplitOptions.TrimEntries);
             // если пришла просто команда "menu"
             if (messageSplitted.Length <= 1)
@@ -102,7 +127,7 @@ namespace FetchFood.Services
 
                 // добавить позицию
                 case BotCommands.ADD_POSITION:
-                    if(args != BotCommands.EMPTY)
+                    if (args != BotCommands.EMPTY)
                     {
                         await HandleAddPosCommandAsync(bot, _chatId, args, ct);
                     }
@@ -125,7 +150,7 @@ namespace FetchFood.Services
                     if (args != BotCommands.EMPTY)
                     {
                         await HandleDelPosCommandAsync(bot, _chatId, args, ct);
-                    } 
+                    }
                     break;
 
                 // отобразить искомые позиции
