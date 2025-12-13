@@ -2,7 +2,6 @@
 using BusinessLogic.Services.Administration.Models;
 using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
-using BusinessLogic.Services.MakingOrders.Implemenatation;
 using BusinessLogic.Services.Menu.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
@@ -12,6 +11,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 
 
 namespace FetchFood.Services
@@ -21,7 +21,6 @@ namespace FetchFood.Services
     {
         private TelegramBotClient _bot;
         private readonly CancellationTokenSource _cts = new();
-        private readonly ILogger<MakingOrdersService> _logger;
         private readonly IAuthorizationService _authorizationService;
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
@@ -69,27 +68,70 @@ namespace FetchFood.Services
             // Обработка текстовых сообщений от пользователя
             if (update.Type is UpdateType.Message)
             {
-                // Проверка находится ли пользователь в процессе оформления заказа
-                bool isInOrderProcess = await _makingOrdersService.IsUserInOrderProcessAsync(update.Message.From.Id);
-                if (isInOrderProcess)
+                string? command = update.Message.Text.Split(' ')[0];
+                switch (command)
                 {
-                    var commandHandler = new BotMakingOrdersHandler(update, bot, _makingOrdersService);
-                    commandHandler.Invoke();
-                    return;
-                }
-                else
-                {
-                    // если была подана текстовая команда управления меню
-                    if (update.Message.Text != null && update.Message.Text.StartsWith(BotCommands.MENU))
-                    {
+                    case BotCommands.START:
+                        await bot.SendMessage(update.Message.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
+
+                        // Лия (2025-12-03): договорились, что будем показывать кнопку Меню сразу после старта бота.
+                        // Пока не очень понимаю, как сделать это правильно, поэтому вынесла показ кнопки в публичный метод.
                         var menuCommandHandler = new BotMenuHandler(update, bot, _menuService);
-                        menuCommandHandler.Invoke();
-                        return;
-                    }
-                    // Проверка на авторизацию пользователя
-                    var commandHandler = new BotAuthorizationHandler(update, bot, _authorizationService);
-                    commandHandler.Invoke();
-                   // return;
+                        await menuCommandHandler.ShowMenuButton(bot, string.Empty, update.Message.Chat.Id, ct);
+                        //
+
+                        var isAdministrator = await _authorizationService.IsUserAdministratorAsync(update.Message.From.Id);
+
+                        // TODO: ПЕРЕНЕСТИ ЭТОТ ВЫЗОВ КНОПКИ В СЕРВИС КОРЗИНЫ
+                        // ЗДЕСЬ НУЖЕН ТОЛЬКО ДЛЯ ПРОВЕРКИ
+                        if (isAdministrator)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            // Если авторизован - предлагаем начать оформление заказа
+                            await ShowOrderSuggestion(bot, update.Message.Chat.Id, ct);
+                        }
+
+                        break;
+
+                    case BotCommands.HELP:
+                        await bot.SendMessage(update.Message.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
+                        break;
+
+                    default:
+                        
+                        // Проверка находится ли пользователь в процессе оформления заказа
+                        bool isInOrderProcess = await _makingOrdersService.IsUserInOrderProcessAsync(update.Message.From.Id);
+                        if (isInOrderProcess)
+                        {
+                            var commandHandler = new BotMakingOrdersHandler(update, bot, _makingOrdersService);
+                            commandHandler.Invoke();
+                            return;
+                        }
+                        else
+                        {
+                            // Проверка на авторизацию пользователя
+                            var commandHandler = new BotAuthorizationHandler(update, bot, _authorizationService);
+                            commandHandler.Invoke();
+                            // если была подана текстовая команда управления меню
+                            if (update.Message.Text.StartsWith(BotCommands.MENU))
+                            {
+                                var menuMessageCommandHandler = new BotMenuHandler(update, bot, _menuService);
+                                menuMessageCommandHandler.Invoke();
+                                return;
+                            }
+                            // // Лия (2025-12-03): если подано сообщение ни для сервиса меню, ни для сервиса заказо, проверяем сервис корзины.
+                            else if (await _cartService.HandleMessageAsync(bot, update.Message, ct))
+                            {
+                                return;
+                            }
+                            // // Лия (2025-12-03): если ни один сервис не принял сообщение, переспрашиваем пользователя.
+                            await bot.SendMessage(update.Message.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                        }
+
+                        break;
                 }
             }
 
@@ -109,10 +151,12 @@ namespace FetchFood.Services
                 }
                 //
                 // Проверяем, начинается ли callback_data с префикса "cart_
-                if (callBackData[0] == BotCommands.CART_SHOW ||
-                    callBackData[0] == BotCommands.CART_ADD ||
-                    callBackData[0] == BotCommands.CART_REMOVE ||
-                    callBackData[0] == BotCommands.CART_CLEAR)
+                // Лия (2025-12-13): заменяю множественные проверки на одну, используя новую константу.
+                //if (callBackData[0] == BotCommands.CART_SHOW ||
+                //    callBackData[0] == BotCommands.CART_ADD ||
+                //    callBackData[0] == BotCommands.CART_REMOVE ||
+                //    callBackData[0] == BotCommands.CART_CLEAR)
+                if (callBackData[0].StartsWith(BotCommands.CART_PREFIX))
                 {
                     // Если да, передаем *весь* объект callBack
                     // в HandleCallbackQueryAsync нашего TelegramBotCartService
@@ -129,7 +173,6 @@ namespace FetchFood.Services
                     await _bot.AnswerCallbackQuery(callBack.Id, cancellationToken: ct);
                     return;
                 }
-
 
                 var number = callBackData.Length > 1 ? Convert.ToInt32(callBackData[1]) : 0;
 
@@ -234,42 +277,6 @@ namespace FetchFood.Services
                         }
                         break;
                 }
-            }
-
-            if (update.Message is not { } msg) return;
-
-            if (msg.Text is not { } text) return;
-
-            string? command = text.Split(' ')[0];
-            switch (command)
-            {
-                case BotCommands.START:
-                    await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
-
-                    var isAdministrator = await _authorizationService.IsUserAdministratorAsync(msg.From.Id);
-
-                    // TODO: ПЕРЕНЕСТИ ЭТОТ ВЫЗОВ КНОПКИ В СЕРВИС КОРЗИНЫ
-                    // ЗДЕСЬ НУЖЕН ТОЛЬКО ДЛЯ ПРОВЕРКИ
-                    if (isAdministrator)
-                    {
-                        return;
-                    }
-                    else
-                    {
-                        // Если авторизован - предлагаем начать оформление заказа
-                        await ShowOrderSuggestion(bot, msg.Chat.Id, ct);
-                    }
-
-                    break;
-
-                case BotCommands.HELP:
-                    await bot.SendMessage(msg.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
-                    break;
-
-                default:
-                    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
-                    
-                    break;
             }
         }
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)

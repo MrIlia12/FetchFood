@@ -55,22 +55,59 @@ namespace FetchFood.Services
             if (query.Data == null || query.Message == null) return;
             long userId = query.Message.Chat.Id;
 
-            // Определяем, какая кнопка была нажата, по ее callback_data
-            switch (query.Data)
+            // Лия (2025-12-13): если команда пришла не одна, а с аргументами, разбираем её. Иначе просто обрабатываем запрос как есть
+            string queryData = query.Data;
+            if (query.Data.Contains(' '))
+            {
+                queryData = query.Data.Split(' ')[0];
+            }
+                // Определяем, какая кнопка была нажата, по ее callback_data
+                switch (queryData)
             {
                 case BotCommands.CART_SHOW:
                     await ShowCartAsync(bot, userId, ct);
                     break;
 
                 case BotCommands.CART_ADD:
-                    // Устанавливаем состояние "ждем ID и кол-во"
-                    _userState[userId] = "awaiting_item_to_add";
-                    await bot.SendMessage(
-                        chatId: userId,
-                        text: "Введите товар для добавления в формате:\n*ID_Товара Количество*\n\n*Пример:* `5 2`",
-                        parseMode: ParseMode.Markdown,
-                        cancellationToken: ct
-                    );
+                    // Лия (2025-12-13): если команда пришла с аргументами, добавляем позицию в корзину сразу.
+                    if (query.Data.Contains(' '))
+                    {
+                        string[] queryData_splitted = query.Data.Split(' ');
+                        if (queryData_splitted.Length < 3)
+                        {
+                            break;
+                        }
+                        int posNum;
+                        if (!int.TryParse(queryData_splitted[1], out posNum))
+                        {
+                            break;
+                        }
+                        int posQuantity;
+                        if (!int.TryParse(queryData_splitted[2], out posQuantity))
+                        {
+                            break;
+                        }
+                        // если все проверки пройдены, засылаем команду на добавление позиции.
+                        await _cartService.AddItemToCartAsync(userId, posNum, posQuantity);
+
+                        await bot.SendMessage(
+                            chatId: userId,
+                            text: $"✅ Товар добавлен в корзину.",
+                            replyMarkup: GetCartInlineKeyboard(), // Показываем меню
+                            cancellationToken: ct
+                        );
+                    }
+                    else
+                    {
+                        // Устанавливаем состояние "ждем ID и кол-во"
+                        _userState[userId] = "awaiting_item_to_add";
+                        await bot.SendMessage(
+                            chatId: userId,
+                            text: "Введите товар для добавления в формате:\n*ID_Товара Количество*\n\n*Пример:* `5 2`",
+                            parseMode: ParseMode.Markdown,
+                            cancellationToken: ct
+                        );
+                    }
                     break;
 
                 case BotCommands.CART_REMOVE:
@@ -106,10 +143,11 @@ namespace FetchFood.Services
             }
         }
 
-
-        public async Task HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
+        // Лия (2025-12-13): добавляю возврат значения, чтобы понимать - сообщение было принято сервисом или нет
+        // (если бот не находится в состоянии, когда пользователь добавляет или удалят позицию из корзины, будет возвращено false)
+        public async Task<bool> HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
         {
-            if (bot is null || msg.Text is not { } text) return;
+            if (bot is null || msg.Text is not { } text) return false;
             long userId = msg.Chat.Id;
 
             // 1. Проверяем, ждем ли мы ответа от пользователя (проверка состояния)
@@ -120,39 +158,44 @@ namespace FetchFood.Services
                     // Если ждали "ID Кол-во" для добавления
                     case "awaiting_item_to_add":
                         await AddItemFromMessageAsync(bot, msg, ct);
-                        return; 
+                        return true; 
 
                     // Если ждали "ID" для удаления
                     case "awaiting_item_to_remove":
                         await RemoveItemFromMessageAsync(bot, msg, ct);
-                        return; 
+                        return true;
+                    // Лия (2025-12-13): добавляю дефолтную ветку, чтобы была возможность проверить состояние сервиса и выйти,
+                    // если пользователь не в процессе добавления или удаления позиции.
+                    default:
+                        return false;
                 }
             }
+            return false;
+            // Лия (2025-12-13): убираю эту часть кода за ненадобностью - обработка некорректного сообщения или сообщения "start" уже описана в TelegramServiceBot.
+            //// 2. Если состояния нет, обрабатываем как обычную команду (/start)
+            //switch (text)
+            //{
+            //    case BotCommands.START:
+            //        string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\nИспользуйте меню ниже для управления корзиной.";
 
-            // 2. Если состояния нет, обрабатываем как обычную команду (/start)
-            switch (text)
-            {
-                case BotCommands.START:
-                    string welcomeText = "Привет! Я бот для заказа еды FetchFood 🤖\n\nИспользуйте меню ниже для управления корзиной.";
+            //        await bot.SendMessage(
+            //            chatId: userId,
+            //            text: welcomeText,
+            //            replyMarkup: GetCartInlineKeyboard(), 
+            //            cancellationToken: ct
+            //        );
+            //        break;
 
-                    await bot.SendMessage(
-                        chatId: userId,
-                        text: welcomeText,
-                        replyMarkup: GetCartInlineKeyboard(), 
-                        cancellationToken: ct
-                    );
-                    break;
-
-                default:
-                    // Реакция на любой другой текст
-                    await bot.SendMessage(
-                        chatId: userId,
-                        text: "Неизвестная команда. Пожалуйста, используйте меню.",
-                        replyMarkup: GetCartInlineKeyboard(),
-                        cancellationToken: ct
-                    );
-                    break;
-            }
+            //    default:
+            //        // Реакция на любой другой текст
+            //        await bot.SendMessage(
+            //            chatId: userId,
+            //            text: "Неизвестная команда. Пожалуйста, используйте меню.",
+            //            replyMarkup: GetCartInlineKeyboard(),
+            //            cancellationToken: ct
+            //        );
+            //        break;
+            //}
         }
 
         // добавления товара 

@@ -33,6 +33,8 @@
         public const string CART_ADD = "cart_add";
         public const string CART_REMOVE = "cart_remove";
         public const string CART_CLEAR = "cart_clear";
+        // Лия (2025-12-13): добавляю новую константу - префикс "cart" для того, чтобы одной проверкой определять сообщения, относящиеся к сервису корзины.
+        public const string CART_PREFIX = "cart_";
         // команды сервиса меню
         public const string MENU = "menu";
         public const string PAGE = "page";
