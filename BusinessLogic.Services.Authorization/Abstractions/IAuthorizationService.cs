@@ -14,6 +14,8 @@ namespace BusinessLogic.Services.Authorization.Abstractions
 
         Task<bool> RemoveAuthorization(long userId);
 
+        Task<UserRole> GetUserRoleAsync(long userId);
+
         Task<bool> IsUserAdministratorAsync(long userId);
     }
 }

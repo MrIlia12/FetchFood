@@ -44,7 +44,7 @@ namespace BusinessLogic.Services.Administration.Implemenatation
                 UserName = user.Name,
                 Price = orders[number].Price.ToString(),
                 Status = orders[number].Status.ToString(),
-                DateOrder = orders[number].DateOrder.ToString(),
+                DateOrder = orders[number].DateOrder,
                 OrderPosition = orderPosition
             };
 

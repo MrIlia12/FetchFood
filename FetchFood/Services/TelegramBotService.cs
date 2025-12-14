@@ -6,6 +6,7 @@ using BusinessLogic.Services.Menu.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
+using System.Net;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -25,7 +26,6 @@ namespace FetchFood.Services
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
-
         private readonly ITelegramBotCartService _cartService;
 
         public TelegramBotService(IAuthorizationService authorizationService, ITelegramBotCartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
@@ -65,6 +65,15 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+            BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
+                ? await GetHandlerAsync(update, update.CallbackQuery.Data)
+                : update.Message.Text == BotCommands.HELP
+                    ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
+                    : default;
+
+            handler?.Invoke();
+            /*
+
             // Обработка текстовых сообщений от пользователя
             if (update.Type is UpdateType.Message)
             {
@@ -278,36 +287,78 @@ namespace FetchFood.Services
                         break;
                 }
             }
+
+            if (update.CallbackQuery is { } callbackQuery)
+            {
+                return;
+            }
+
+            if (update.Message is not { } msg) return;
+
+            if (msg.Text is not { } text) return;
+
+            // если была подана текстовая команда управления меню
+            if (msg.Text.StartsWith(BotCommands.MENU))
+            {
+                await _menuService.HandleMenuCommandAsync(bot, msg.Chat.Id, msg.Text, ct);
+                return;
+            }
+
+            string? command = text.Split(' ')[0];
+            switch (command)
+            {
+                case BotCommands.START:
+                    await bot.SendMessage(msg.Chat.Id, "Привет! Меня зовут FetchFood. \nСейчас я проверю, знакомы ли мы. \nТакже Вы можете написать /help, чтобы узнать, что я могу!", cancellationToken: ct);
+
+                    var isAdministrator = await _authorizationService.IsUserAdministratorAsync(msg.From.Id);
+
+                    // TODO: ПЕРЕНЕСТИ ЭТОТ ВЫЗОВ КНОПКИ В СЕРВИС КОРЗИНЫ
+                    // ЗДЕСЬ НУЖЕН ТОЛЬКО ДЛЯ ПРОВЕРКИ
+                    if (isAdministrator)
+                    {
+                        return;
+                    }
+                    break;
+
+                case BotCommands.HELP:
+                    await bot.SendMessage(msg.Chat.Id, "Всем привет! Я - бот доставки еды. \r\nПока я ещё совсем молодой и почти ничего не умею, но в будущем смогу отображать меню, помогать с оформлением и отслеживанием заказов.\r\nПожелайте мне успехов в развитии!♥️", cancellationToken: ct);
+                    break;
+
+                default:
+                    await bot.SendMessage(msg.Chat.Id, "Вас не понял... Попробуйте команду /help.", cancellationToken: ct);
+                    
+                    break;
+            }
+
+            */
         }
+
+        private async Task<BotCommandHandler> GetHandlerAsync(Update update, string command)
+        {
+            string commandPrefix;
+            try
+            {
+                commandPrefix = command.Split(CommandsBase.Separator)[0];
+            }
+            catch 
+            {
+                throw new ArgumentException("Неверный формат команды.");
+            }
+
+            BotCommandHandler handler = commandPrefix switch
+            {
+                MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
+                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService),
+                AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService)
+            };
+
+            return handler;
+        }
+
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)
         {
             Console.WriteLine($"[{LogMessages.ERROR}]: {ex.Message}");
             return Task.CompletedTask;
-        }
-
-
-        // TODO: ПЕРЕНЕСТИ ЭТОТ ВЫЗОВ КНОПКИ В СЕРВИС КОРЗИНЫ
-        // ЗДЕСЬ НУЖЕН ТОЛЬКО ДЛЯ ПРОВЕРКИ
-        // Показываем предложение оформить заказ с инлайн-кнопкой
-        private async Task ShowOrderSuggestion(ITelegramBotClient bot, long chatId, CancellationToken ct)
-        {
-            string message = "✅ Вы авторизованы!\n\n" +
-                "🎉 Отлично! Теперь вы можете оформить свой заказ!\n\n" +
-                "Готовы начать?";
-
-            // Создаем инлайн-кнопку
-            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(new[]
-             {
-                 new[]
-                 {
-                     InlineKeyboardButton.WithCallbackData("🛍️ Оформить заказ", MakingOrdersCommand.StartOrder.Command)
-                 }
-             });
-
-            await bot.SendMessage(chatId,
-                message,
-                replyMarkup: inlineKeyboard,
-                cancellationToken: ct);
         }
     }
 }

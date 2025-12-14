@@ -77,6 +77,18 @@ namespace BusinessLogic.Services.Authorization
         /// </summary>
         /// <param name="userId">Id пользователя.</param>
         /// <returns>True, если является администратором.</returns>
+        public async Task<UserRole> GetUserRoleAsync(long userId)
+        {
+            var user = await UserRepository.GetUserByIdAsync(userId);
+
+            return user.Role;
+        }
+
+        /// <summary>
+        /// Проверяет, является ли пользователь администратором.
+        /// </summary>
+        /// <param name="userId">Id пользователя.</param>
+        /// <returns>True, если является администратором.</returns>
         public async Task<bool> IsUserAdministratorAsync(long userId)
         {
             var user = await UserRepository.GetUserByIdAsync(userId);

@@ -1,6 +1,8 @@
 ﻿using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot;
+using FetchFood.Commands;
 using BusinessLogic.Services.Authorization.Abstractions;
 
 namespace FetchFood.Services
@@ -21,14 +23,17 @@ namespace FetchFood.Services
         }
         public override async void Invoke()
         {
-            var message = (this.Update ?? throw new ArgumentNullException("Взаимодействие с ботом не может быть нулевым.")).Message;
-
-            var userId = ((message ?? throw new ArgumentNullException("Сообщение не может быть нулевым."))
-                .From ?? throw new ArgumentNullException("Пользователь не может отсутствовать."))
-                .Id;
-
             try
             {
+                var message = this.Update.Message;
+                var userId = message.From.Id;
+
+            
+                if (message.Type is MessageType.Contact)
+                {
+                    await HandleContactMessage(message);
+                }
+
                 var isAuthorized = await _authorizationService.IsUserAuthorizedAsync(userId);
                 if (!isAuthorized)
                 {
@@ -40,13 +45,18 @@ namespace FetchFood.Services
                 var isAdministrator = await _authorizationService.IsUserAdministratorAsync(userId);
                 if (isAdministrator)
                 {
-                    GetAdministratorConsoleAsync(message.Chat.Id);
+                    await GetAdministratorConsoleAsync(message.Chat.Id);
                     return;
                 }
+
+                await ShowMenuButton(message.Chat.Id);
             }
-            catch
+            catch (Exception ex)
             {
-                throw new Exception("Ошибка авторизации.");
+                Console.WriteLine($"Ошибка авторизации: {ex}");
+                await _bot.SendMessage(
+                    chatId: Update.Message.Chat.Id,
+                    text: "❌ Произошла ошибка во время авторизации. Пожалуйста, попробуйте позже.");
             }
         }
 
@@ -72,6 +82,55 @@ namespace FetchFood.Services
                 chatId: chatId,
                 text: "👋 Добро пожаловать! Чтобы использовать бота, пожалуйста поделитесь контактом.",
                 replyMarkup: requestContactKeyboard);
+        }
+
+        /// <summary>
+        /// Метод отправки команды на отоброжение меню.
+        /// </summary>
+        /// <param name="update">Информация об обновлении бота.</param>
+        /// <returns></returns>
+        public async Task ShowMenuButton(long _chatId)
+        {
+            var menuKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("🍔 Меню", "menu:page:0")
+                }
+            });
+
+            var mssg = "Готов к работе. Нажмите «🍔 Меню», чтобы посмотреть список позиций.";
+
+            await _bot.SendMessage(
+                    chatId: _chatId,
+                    text: mssg,
+                    replyMarkup: menuKeyboard);
+        }
+
+        /// <summary>
+        /// Метод отправки команды на начало оформления заказа.
+        /// </summary>
+        /// <param name="update">Информация об обновлении бота.</param>
+        /// <returns></returns>
+        private async Task StartMakingOrderAsync(Update update)
+        {
+            string message = "✅ Вы авторизованы!\n\n" +
+                "🎉 Отлично! Теперь вы можете оформить свой заказ!\n\n" +
+                "Готовы начать?";
+
+            // Создаем инлайн-кнопку
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(new[]
+             {
+                 new[]
+                 {
+                     InlineKeyboardButton.WithCallbackData("🛍️ Оформить заказ", MakingOrdersCommand.StartOrder.Command)
+                 }
+             });
+
+            await _bot.SendMessage(
+                chatId: update.Message.Chat.Id,
+                message,
+                replyMarkup: inlineKeyboard);
         }
 
         private async Task GetAdministratorConsoleAsync(long chatId)

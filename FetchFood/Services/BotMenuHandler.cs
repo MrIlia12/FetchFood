@@ -42,18 +42,6 @@ namespace FetchFood.Services
             await HandleMenuCommandAsync(_bot, chatId, data);
         }
         #region Сервис меню
-        public async Task ShowMenuButton(ITelegramBotClient bot, string mssg, long _chatId, CancellationToken ct)
-        {
-            if (string.IsNullOrEmpty(mssg))
-            {
-                mssg = "Готов к работе. Нажмите «🍔 Меню», чтобы посмотреть список позиций.";
-            }
-            await bot.SendMessage(
-                    chatId: _chatId,
-                    text: mssg,
-                    replyMarkup: UserMainInlineKeyboard(),
-                    cancellationToken: ct);
-        }
         private static InlineKeyboardMarkup UserMainInlineKeyboard()
         {
             // Кнопка иеню для авторизованного пользователя:
