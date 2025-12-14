@@ -1,19 +1,45 @@
-﻿using DataAccess.Entities.Models;
+﻿using BusinessLogic.Services.Menu.Abstractions;
+using DataAccess.Entities.Models;
 using DataAccess.Entities;
-using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot;
-using FetchFood.Abstractions;
-using BusinessLogic.Services.Menu.Abstractions;
-using System.IO;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
+using System.Text;
 
 namespace FetchFood.Services
 {
-    public class TelegramBotMenuService : ITelegramBotMenuService
+    class BotMenuHandler : BotCommandHandler
     {
-        public readonly IMenuService _menuService;
-        public TelegramBotMenuService(IMenuService menuService) 
+        private readonly IMenuService _menuService;
+        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService) : base(update, botClient)
         {
             _menuService = menuService;
+        }
+        public override async void Invoke()
+        {
+            string? data = string.Empty;
+            long chatId;
+            // если получен сигнал от кнопки
+            if (Update.CallbackQuery != null)
+            {
+                var callbackQuery = Update.CallbackQuery;
+                chatId = callbackQuery.Message.Chat.Id;
+                data = callbackQuery.Data;
+            }
+
+            // если получено текстовое сообщение
+            else if (Update.Message != null)
+            {
+                var mssg = Update.Message;
+                chatId = mssg.Chat.Id;
+                data = mssg.Text;
+            }
+            else
+            {
+                // хз, что пришло.
+                return;
+            }
+            await HandleMenuCommandAsync(_bot, chatId, data);
         }
         #region Сервис меню
         public async Task ShowMenuButton(ITelegramBotClient bot, string mssg, long _chatId, CancellationToken ct)
@@ -40,9 +66,9 @@ namespace FetchFood.Services
             });
         }
 
-        public async Task HandleMenuCommandAsync(ITelegramBotClient bot, long _chatId, string message, CancellationToken ct)
+        public async Task HandleMenuCommandAsync(ITelegramBotClient bot, long _chatId, string message, CancellationToken ct = default)
         {
-            
+
             var messageSplitted = message.Split(':', 3, StringSplitOptions.TrimEntries);
             // если пришла просто команда "menu"
             if (messageSplitted.Length <= 1)
@@ -72,7 +98,6 @@ namespace FetchFood.Services
                     break;
                 // показать информацию о позиции по номеру
                 case BotCommands.POSITION:
-
                     if (args != BotCommands.EMPTY && int.TryParse(args, out var posNum))
                     {
                         await HandlePositionCallbackAsync(bot, _chatId, posNum, ct);
@@ -102,7 +127,7 @@ namespace FetchFood.Services
 
                 // добавить позицию
                 case BotCommands.ADD_POSITION:
-                    if(args != BotCommands.EMPTY)
+                    if (args != BotCommands.EMPTY)
                     {
                         await HandleAddPosCommandAsync(bot, _chatId, args, ct);
                     }
@@ -125,7 +150,7 @@ namespace FetchFood.Services
                     if (args != BotCommands.EMPTY)
                     {
                         await HandleDelPosCommandAsync(bot, _chatId, args, ct);
-                    } 
+                    }
                     break;
 
                 // отобразить искомые позиции
@@ -363,6 +388,10 @@ namespace FetchFood.Services
                     replyMarkup: UserMainInlineKeyboard(),
                     cancellationToken: ct);
             }
+            catch (Telegram.Bot.Exceptions.ApiRequestException)
+            {
+                Console.WriteLine($"ChatId: {chatId}");
+            }
             catch (Exception ex)
             {
                 await bot.SendMessage(chatId,
@@ -430,6 +459,10 @@ namespace FetchFood.Services
                     $"Уточните название (Например: `{BotCommands.MENU}:{BotCommands.DELETE_POSITION}:Бургер классик`) ",
                     cancellationToken: ct);
             }
+            catch (Telegram.Bot.Exceptions.ApiRequestException)
+            {
+                Console.WriteLine($"ChatId: {chatId}");
+            }
             catch (Exception ex)
             {
                 await bot.SendMessage(chatId, "⚠️ Ошибка при удалении позиции.", cancellationToken: ct);
@@ -443,6 +476,7 @@ namespace FetchFood.Services
             var pos = await _menuService.GetPositionAsync(posNum, ct);
             if (pos is null || pos.Status != PositionStatus.Active)
             {
+                posNum = -1;
                 mssgTxt = "Эта позиция недоступна 😔";
             }
             else
@@ -453,7 +487,7 @@ namespace FetchFood.Services
             await bot.SendMessage(
                     chatId: _chatId,
                     text: mssgTxt,
-                    replyMarkup: PositionActionsKeyboard(),
+                    replyMarkup: PositionActionsKeyboard(posNum),
                     cancellationToken: ct);
             return;
         }
@@ -464,18 +498,41 @@ namespace FetchFood.Services
         {
             var name = (p.Name ?? "").Trim();
             var price = FormatPrice(p.Price);
-            return $"{name}\nЦена: {price}";
+            var ingredients = p.Ingredients;
+            var description = p.Description;
+            StringBuilder outputMssg = new StringBuilder();
+            outputMssg.Append($"{name}\nЦена: {price}");
+            if (!string.IsNullOrWhiteSpace(ingredients))
+            {
+                outputMssg.Append($"\nСостав: {ingredients}");
+            }
+            if (!string.IsNullOrWhiteSpace(description)) 
+            {
+                outputMssg.Append($"\n\n{description}");
+            }
+            return outputMssg.ToString();
         }
 
-        private static InlineKeyboardMarkup PositionActionsKeyboard()
+        private static InlineKeyboardMarkup PositionActionsKeyboard(int posNum)
         {
-            var buttons = new[]
-            {
-                new[]
-                {
+            InlineKeyboardButton[][] buttons =
+            [
+                [
                     InlineKeyboardButton.WithCallbackData("⬅️ Назад к меню", $"{BotCommands.MENU}:{BotCommands.BACK}"),
-                }
-            };
+                ]
+            ];
+            // Думаю, правильнее всего будет подвязать кнопку добавления в корзину при получении развёрнутой информации о позиции.
+            if (posNum != -1)
+            {
+                buttons =
+                [
+                    [
+                        InlineKeyboardButton.WithCallbackData("Добавить в корзину", $"{BotCommands.CART_ADD} {posNum} {1}"),
+                        InlineKeyboardButton.WithCallbackData("⬅️ Назад к меню", $"{BotCommands.MENU}:{BotCommands.BACK}"),
+                    ]
+                ];
+            }
+
             return new InlineKeyboardMarkup(buttons);
         }
 

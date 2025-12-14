@@ -17,7 +17,10 @@ namespace FetchFood.Abstractions
         /// <param name="bot"></param>
         /// <param name="msg"></param>
         /// <param name="ct"></param>
-        Task HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct);
+        /// 
+        // Лия (2025-12-13): добавляю возврат значения, чтобы понимать - сообщение было принято сервисом или нет
+        // (если бот не находится в состоянии, когда пользователь добавляет или удалят позицию из корзины, будет возвращено false)
+        Task<bool> HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct);
 
         /// <summary>
         /// Асинхронно отображает главное меню пользователю.

@@ -15,4 +15,8 @@
     <ProjectReference Include="..\DataAccess.Entities\DataAccess.Entities.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Implementation\" />
+  </ItemGroup>
+
 </Project>

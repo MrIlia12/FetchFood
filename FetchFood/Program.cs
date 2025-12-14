@@ -75,7 +75,6 @@ public static class Program
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
         .AddTransient<IMenuService, MenuService>()
-        .AddTransient<ITelegramBotMenuService, TelegramBotMenuService>()
         .AddTransient<IMakingOrdersService, MakingOrdersService>()
         .AddTransient<ICartService, CartService>(); // Добавлена регистрация ICartService
     }
