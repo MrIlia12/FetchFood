@@ -18,7 +18,7 @@ namespace DataAccess.Entities
         public string PhoneNumber { get; set; }
         public string Comment { get; set; }
         // Текущий шаг процесса оформления заказа
-        public OrderStatus CurrentState { get; set; }
+        public string CurrentState { get; set; }
         // Список товаров в корзине
         public List<CartItem> CartItems { get; set; } = new();
         public decimal Price { get; set; }

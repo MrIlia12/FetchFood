@@ -38,7 +38,7 @@ namespace DataAccess.Entities
 
         [Required]
         [Column(TypeName = "varchar(20)")]
-        public OrderStatus Status { get; set; }
+        public string? Status { get; set; }
 
         [MaxLength(1000)]
         public string Comment { get; set; }
@@ -55,7 +55,7 @@ namespace DataAccess.Entities
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public OrderStatus NextState { get; set; }
+        public string NextState { get; set; }
         public bool IsCompleted { get; set; }
         public bool HasInlineKeyboard { get; set; }
         public InlineKeyboardMarkup InlineKeyboard { get; set; }
