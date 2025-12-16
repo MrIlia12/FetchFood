@@ -3,6 +3,7 @@ using DataAccess.Entities;
 using FetchFood.Commands;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 
 namespace FetchFood.Services
@@ -58,9 +59,8 @@ namespace FetchFood.Services
                 {
                     await _bot.SendMessage(
                         chatId: chatId,
-                        text: "📝 Введите адрес доставки в формате:\nул. <улица>, д. <номер дома>, кв. <номер квартиры>\n\n" +
-                              "Пример: ул. Ленина, д. 15, кв. 42\n\n" +
-                              "Допустимые форматы дома: 15, 15а, 15/1, 15/1а");
+                        replyMarkup: new ForceReplyMarkup { Selective = true },
+                        text: BotCommands.ORDER1);
                 }
                 else
                 {

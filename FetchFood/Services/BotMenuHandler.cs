@@ -5,6 +5,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using System.Text;
+using FetchFood.Commands;
 
 namespace FetchFood.Services
 {
@@ -104,12 +105,8 @@ namespace FetchFood.Services
                 case BotCommands.ADD:
                     await bot.SendMessage(
                         chatId: _chatId,
-                        text:
-                            "Чтобы добавить позицию:\n" +
-                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl]\n\n" +
-                            "Пример:\n" +
-                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Бургер;199.9;булка, котлета, сыр;" +
-                            "Сочный бургер;https://img",
+                        text: BotCommands.MENU1,
+                        replyMarkup: new ForceReplyMarkup { Selective = true },
                         cancellationToken: ct);
                     break;
 
@@ -295,6 +292,7 @@ namespace FetchFood.Services
                     $"Формат: {BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl]\n" +
                     $"Например:\n{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Бургер;199.9;ингредиент1,ингредиент2;" +
                     "Пара слов о блюде.;https://img",
+                    replyMarkup: new ForceReplyMarkup { Selective = true },
                     cancellationToken: ct);
                 return;
             }
@@ -515,7 +513,7 @@ namespace FetchFood.Services
                 buttons =
                 [
                     [
-                        InlineKeyboardButton.WithCallbackData("Добавить в корзину", $"{BotCommands.CART_ADD} {posNum} {1}"),
+                        InlineKeyboardButton.WithCallbackData("Добавить в корзину", $"{BotCommands.CART}{CommandsBase.Separator}{BotCommands.CART_ADD} {posNum} {1}"),
                         InlineKeyboardButton.WithCallbackData("⬅️ Назад к меню", $"{BotCommands.MENU}:{BotCommands.BACK}"),
                     ]
                 ];
