@@ -27,8 +27,8 @@
         public const string ORDERDELETE = "DeleteOrder";
 		// команды сервиса корзины
         public const string SHOWCART = "🛒 Показать корзину";
-        public const string ADDITEM = "➕ Добавить товар";
-        public const string DELETEITEM = "➖ Удалить товар";
+        public const string ADDITEM = "В меню";
+        public const string DELETEITEM = "Оформить заказ";
         public const string CLEARCART = "🗑️ Очистить корзину";
         // --- НОВЫЕ КОНСТАНТЫ: Callback_data для Inline кнопок корзины ---
         public const string CART_SHOW = "cart_show";

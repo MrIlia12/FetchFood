@@ -9,6 +9,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using FetchFood.Commands;
+using BusinessLogic.Services.MakingOrders.Implemenatation;
 
 namespace FetchFood.Services
 {
@@ -67,8 +68,8 @@ namespace FetchFood.Services
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotCommands.ADDITEM, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_ADD),
-                    InlineKeyboardButton.WithCallbackData(BotCommands.DELETEITEM, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_REMOVE)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.DELETEITEM, MakingOrdersCommand.StartOrder.Command),
+                    InlineKeyboardButton.WithCallbackData(BotCommands.ADDITEM, MenuCommand.GoBack.Command)
                 },
                 new[]
                 {

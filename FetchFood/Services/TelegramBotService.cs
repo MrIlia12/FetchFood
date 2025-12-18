@@ -66,9 +66,11 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+
+
             BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
                 ? await GetHandlerAsync(update, update.CallbackQuery.Data)
-                : update.Message.Text == BotCommands.START
+                : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
                     ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
                     : await HandleReplyMessage(update);
 

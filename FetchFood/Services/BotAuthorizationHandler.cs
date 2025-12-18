@@ -107,32 +107,6 @@ namespace FetchFood.Services
                     replyMarkup: menuKeyboard);
         }
 
-        /// <summary>
-        /// Метод отправки команды на начало оформления заказа.
-        /// </summary>
-        /// <param name="update">Информация об обновлении бота.</param>
-        /// <returns></returns>
-        private async Task StartMakingOrderAsync(Update update)
-        {
-            string message = "✅ Вы авторизованы!\n\n" +
-                "🎉 Отлично! Теперь вы можете оформить свой заказ!\n\n" +
-                "Готовы начать?";
-
-            // Создаем инлайн-кнопку
-            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(new[]
-             {
-                 new[]
-                 {
-                     InlineKeyboardButton.WithCallbackData("🛍️ Оформить заказ", MakingOrdersCommand.StartOrder.Command)
-                 }
-             });
-
-            await _bot.SendMessage(
-                chatId: update.Message.Chat.Id,
-                message,
-                replyMarkup: inlineKeyboard);
-        }
-
         private async Task GetAdministratorConsoleAsync(long chatId)
         {
             var requestContactKeyboard = new InlineKeyboardMarkup(new[]
