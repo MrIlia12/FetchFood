@@ -56,8 +56,8 @@ namespace BusinessLogic.Services.Administration.Implemenatation
         {
             var order = await _orderRepository.GetOrderByIdAsync(orderId);
             
-            var statusNumber = (int)order.Status;
-            order.Status = (OrderStatus)(statusNumber + 1);
+            //var statusNumber = (int)order.Status;
+            //order.Status = (statusNumber + 1).ToString();
 
             return await _orderRepository.UpdateOrderAsync(order);
         }
