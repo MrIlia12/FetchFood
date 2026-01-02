@@ -15,7 +15,9 @@
     }
     public static class BotCommands
     {
-		// основные команды бота
+        public const string CART = "cart";
+
+        // основные команды бота
         public const string START = "/start";
         public const string HELP = "/help";
 		// команды сервиса заказов
@@ -25,8 +27,8 @@
         public const string ORDERDELETE = "DeleteOrder";
 		// команды сервиса корзины
         public const string SHOWCART = "🛒 Показать корзину";
-        public const string ADDITEM = "➕ Добавить товар";
-        public const string DELETEITEM = "➖ Удалить товар";
+        public const string ADDITEM = "В меню";
+        public const string DELETEITEM = "Оформить заказ";
         public const string CLEARCART = "🗑️ Очистить корзину";
         // --- НОВЫЕ КОНСТАНТЫ: Callback_data для Inline кнопок корзины ---
         public const string CART_SHOW = "cart_show";
@@ -47,6 +49,16 @@
         public const string FIND = "find";
         public const string DO_NOTHING = "noop";
         public const string EMPTY = "";
+
+        // Временные уникальные кооманды
+        public const string MENU1 = "Чтобы добавить позицию:\n" +
+                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl]\n\n" +
+                            "Пример:\n" +
+                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Бургер;199.9;булка, котлета, сыр;" +
+                            "Сочный бургер;https://img";
+        public const string ORDER1 = "📝 Введите адрес доставки в формате:\nул. <улица>, д. <номер дома>, кв. <номер квартиры>\n\n" +
+                              "Пример: ул. Ленина, д. 15, кв. 42\n\n" +
+                              "Допустимые форматы дома: 15, 15а, 15/1, 15/1а";
     }
 
     public static class LogMessages

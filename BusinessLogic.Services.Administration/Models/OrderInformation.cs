@@ -30,7 +30,7 @@
         /// <summary>
         /// Дата оформления.
         /// </summary>
-        public string DateOrder { get; set; }
+        public DateTime DateOrder { get; set; }
 
         /// <summary>
         /// Позиция заказа в списке.

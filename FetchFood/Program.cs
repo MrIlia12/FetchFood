@@ -73,10 +73,9 @@ public static class Program
         .AddTransient<IAuthorizationService, AuthorizationService>()
         .AddTransient<ITelegramBotService, TelegramBotService>()
         .AddTransient<IAdministrationService, AdministrationService>()
-        .AddTransient<ITelegramBotCartService, TelegramBotCartService>()
+        .AddTransient<ICartService, CartService>()
         .AddTransient<IMenuService, MenuService>()
-        .AddTransient<IMakingOrdersService, MakingOrdersService>()
-        .AddTransient<ICartService, CartService>(); // Добавлена регистрация ICartService
+        .AddTransient<IMakingOrdersService, MakingOrdersService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)

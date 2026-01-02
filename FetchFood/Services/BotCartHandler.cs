@@ -8,10 +8,12 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using FetchFood.Commands;
+using BusinessLogic.Services.MakingOrders.Implemenatation;
 
 namespace FetchFood.Services
 {
-    internal class TelegramBotCartService : ITelegramBotCartService
+    internal class BotCartHandler : BotCommandHandler
     {
         private readonly CancellationTokenSource _cts = new();
 
@@ -22,9 +24,36 @@ namespace FetchFood.Services
         private readonly ConcurrentDictionary<long, string> _userState = new();
 
         // Внедрение зависимости бизнес-логики 
-        public TelegramBotCartService(ICartService cartService)
+        public BotCartHandler(Update update, ITelegramBotClient botClient, ICartService cartService) : base(update, botClient)
         {
             _cartService = cartService;
+        }
+
+        public override async void Invoke()
+        {
+            try
+            {
+                // Обработка кнопок
+                if (Update.CallbackQuery != null)
+                {
+                    await HandleCallbackQueryAsync(Update.CallbackQuery, default);
+                    return;
+                }
+
+                // Обработка текстовых сообщений
+                if (Update.Message != null)
+                {
+                    await HandleMessageAsync(Update.Message, default);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка оформления заказа: {ex}");
+                await _bot.SendMessage(
+                    chatId: Update.Message.Chat.Id,
+                    text: "❌ Произошла ошибка во время оформления заказа. Пожалуйста, попробуйте позже.");
+            }
         }
 
         // Создает Inline-клавиатуру для меню корзины
@@ -35,22 +64,22 @@ namespace FetchFood.Services
                 new[]
                 {
                     // callback_data - это то, что бот получит при нажатии
-                    InlineKeyboardButton.WithCallbackData(BotCommands.SHOWCART, BotCommands.CART_SHOW)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.SHOWCART, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_SHOW)
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotCommands.ADDITEM, BotCommands.CART_ADD),
-                    InlineKeyboardButton.WithCallbackData(BotCommands.DELETEITEM, BotCommands.CART_REMOVE)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.DELETEITEM, MakingOrdersCommand.StartOrder.Command),
+                    InlineKeyboardButton.WithCallbackData(BotCommands.ADDITEM, MenuCommand.GoBack.Command)
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotCommands.CLEARCART, BotCommands.CART_CLEAR)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.CLEARCART, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_CLEAR)
                 }
             });
         }
 
         // ОБРАБОТКА НАЖАТИЙ КНОПОК 
-        public async Task HandleCallbackQueryAsync(ITelegramBotClient bot, CallbackQuery query, CancellationToken ct)
+        public async Task HandleCallbackQueryAsync(CallbackQuery query, CancellationToken ct)
         {
             if (query.Data == null || query.Message == null) return;
             long userId = query.Message.Chat.Id;
@@ -64,11 +93,11 @@ namespace FetchFood.Services
                 // Определяем, какая кнопка была нажата, по ее callback_data
                 switch (queryData)
             {
-                case BotCommands.CART_SHOW:
-                    await ShowCartAsync(bot, userId, ct);
+                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_SHOW:
+                    await ShowCartAsync(this._bot, userId, ct);
                     break;
 
-                case BotCommands.CART_ADD:
+                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_ADD:
                     // Лия (2025-12-13): если команда пришла с аргументами, добавляем позицию в корзину сразу.
                     if (query.Data.Contains(' '))
                     {
@@ -90,7 +119,7 @@ namespace FetchFood.Services
                         // если все проверки пройдены, засылаем команду на добавление позиции.
                         await _cartService.AddItemToCartAsync(userId, posNum, posQuantity);
 
-                        await bot.SendMessage(
+                        await this._bot.SendMessage(
                             chatId: userId,
                             text: $"✅ Товар добавлен в корзину.",
                             replyMarkup: GetCartInlineKeyboard(), // Показываем меню
@@ -101,7 +130,7 @@ namespace FetchFood.Services
                     {
                         // Устанавливаем состояние "ждем ID и кол-во"
                         _userState[userId] = "awaiting_item_to_add";
-                        await bot.SendMessage(
+                        await this._bot.SendMessage(
                             chatId: userId,
                             text: "Введите товар для добавления в формате:\n*ID_Товара Количество*\n\n*Пример:* `5 2`",
                             parseMode: ParseMode.Markdown,
@@ -110,10 +139,10 @@ namespace FetchFood.Services
                     }
                     break;
 
-                case BotCommands.CART_REMOVE:
+                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_REMOVE:
                     // Устанавливаем состояние "ждем ID"
                     _userState[userId] = "awaiting_item_to_remove";
-                    await bot.SendMessage(
+                    await this._bot.SendMessage(
                         chatId: userId,
                         text: "Введите ID товара, который хотите удалить.",
                         cancellationToken: ct
@@ -121,9 +150,9 @@ namespace FetchFood.Services
                     break;
 
                 // --- ОЧИСТИТЬ КОРЗИНУ ---
-                case BotCommands.CART_CLEAR:
+                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_CLEAR:
                     await _cartService.ClearCartAsync(userId); // Вызов бизнес-логики
-                    await bot.SendMessage(
+                    await this._bot.SendMessage(
                         chatId: userId,
                         text: "✅ Корзина очищена.",
                         replyMarkup: GetCartInlineKeyboard(), // Снова показываем меню
@@ -135,7 +164,7 @@ namespace FetchFood.Services
             // Отвечаем на Callback, чтобы убрать "часики" (загрузку) на кнопке
             try
             {
-                await bot.AnswerCallbackQuery(query.Id, cancellationToken: ct);
+                await this._bot.AnswerCallbackQuery(query.Id, cancellationToken: ct);
             }
             catch (Exception)
             {
@@ -145,9 +174,9 @@ namespace FetchFood.Services
 
         // Лия (2025-12-13): добавляю возврат значения, чтобы понимать - сообщение было принято сервисом или нет
         // (если бот не находится в состоянии, когда пользователь добавляет или удалят позицию из корзины, будет возвращено false)
-        public async Task<bool> HandleMessageAsync(ITelegramBotClient bot, Message msg, CancellationToken ct)
+        public async Task<bool> HandleMessageAsync(Message msg, CancellationToken ct)
         {
-            if (bot is null || msg.Text is not { } text) return false;
+            if (this._bot is null || msg.Text is not { } text) return false;
             long userId = msg.Chat.Id;
 
             // 1. Проверяем, ждем ли мы ответа от пользователя (проверка состояния)
@@ -157,12 +186,12 @@ namespace FetchFood.Services
                 {
                     // Если ждали "ID Кол-во" для добавления
                     case "awaiting_item_to_add":
-                        await AddItemFromMessageAsync(bot, msg, ct);
+                        await AddItemFromMessageAsync(this._bot, msg, ct);
                         return true; 
 
                     // Если ждали "ID" для удаления
                     case "awaiting_item_to_remove":
-                        await RemoveItemFromMessageAsync(bot, msg, ct);
+                        await RemoveItemFromMessageAsync(this._bot, msg, ct);
                         return true;
                     // Лия (2025-12-13): добавляю дефолтную ветку, чтобы была возможность проверить состояние сервиса и выйти,
                     // если пользователь не в процессе добавления или удаления позиции.
