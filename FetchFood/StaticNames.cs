@@ -49,13 +49,18 @@
         public const string FIND = "find";
         public const string DO_NOTHING = "noop";
         public const string EMPTY = "";
+        // команды категорий
+        public const string CATEGORY = "category";
+        public const string CATEGORIES = "categories";
+        public const string CATEGORY_POSITIONS = "catpos";
 
         // Временные уникальные кооманды
         public const string MENU1 = "Чтобы добавить позицию:\n" +
-                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl]\n\n" +
+                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl];[CategoryId]\n\n" +
                             "Пример:\n" +
                             $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Бургер;199.9;булка, котлета, сыр;" +
-                            "Сочный бургер;https://img";
+                            "Сочный бургер;https://img;1\n\n" +
+                            "CategoryId - опциональный параметр (ID категории). Если не указан, позиция будет без категории.";
         public const string ORDER1 = "📝 Введите адрес доставки в формате:\nул. <улица>, д. <номер дома>, кв. <номер квартиры>\n\n" +
                               "Пример: ул. Ленина, д. 15, кв. 42\n\n" +
                               "Допустимые форматы дома: 15, 15а, 15/1, 15/1а";

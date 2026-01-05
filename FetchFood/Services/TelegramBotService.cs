@@ -28,14 +28,16 @@ namespace FetchFood.Services
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
         private readonly ICartService _cartService;
+        private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService, BusinessLogic.Services.Menu.Abstractions.ICategoryService categoryService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
+            _categoryService = categoryService;
         }
 
         public async Task StartAsync(string token)
@@ -92,7 +94,7 @@ namespace FetchFood.Services
             BotCommandHandler handler = commandPrefix switch
             {
                 MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService),
+                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService),
                 AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
                 BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService)
             };
@@ -106,7 +108,7 @@ namespace FetchFood.Services
 
             BotCommandHandler handler = replyMessage switch
             {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService),
+                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService),
                 BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
             };
 

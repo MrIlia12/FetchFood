@@ -75,6 +75,7 @@ public static class Program
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ICartService, CartService>()
         .AddTransient<IMenuService, MenuService>()
+        .AddTransient<BusinessLogic.Services.Menu.Abstractions.ICategoryService, BusinessLogic.Services.Menu.Implementation.CategoryService>()
         .AddTransient<IMakingOrdersService, MakingOrdersService>();
     }
 
@@ -83,6 +84,7 @@ public static class Program
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
 			.AddTransient<IPositionRepository, PositionRepository>()
+            .AddTransient<IPositionCategoryRepository, PositionCategoryCategoryRepository>()
             .AddTransient<IOrderRepository, OrderRepository>()
             .AddTransient<IOrdersDataRepository, OrderDataRepository>()
             .AddTransient<IOrdersRepository, OrdersRepository>();

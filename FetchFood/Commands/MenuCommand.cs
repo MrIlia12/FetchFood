@@ -13,6 +13,8 @@
         public static MenuCommand GoBack { get { return new MenuCommand($"{MENU}{Separator}{BotCommands.BACK}"); } }
         public static MenuCommand FindPositions { get { return new MenuCommand($"{MENU}{Separator}{BotCommands.FIND}"); } }
         public static MenuCommand DoNothing { get { return new MenuCommand($"{MENU}{Separator}{BotCommands.DO_NOTHING}"); } }
+        public static MenuCommand ShowCategories { get { return new MenuCommand($"{MENU}{Separator}{BotCommands.CATEGORIES}"); } }
+        public static MenuCommand GetCategoryPositions { get { return new MenuCommand($"{MENU}{Separator}{BotCommands.CATEGORY_POSITIONS}"); } }
 
         public override string ToString()
         {

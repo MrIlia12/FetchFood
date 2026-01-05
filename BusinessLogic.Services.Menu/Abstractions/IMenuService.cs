@@ -13,6 +13,14 @@ namespace BusinessLogic.Services.Menu.Abstractions
         /// <param name="ct">Токен отмены (опционально)</param>
         /// <returns>Список позиций в БД</returns>
         Task<List<Position>> GetActivePositionsAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Получить список активных позиций по категории
+        /// </summary>
+        /// <param name="categoryId">Id категории (null для позиций без категории)</param>
+        /// <param name="ct">Токен отмены (опционально)</param>
+        /// <returns>Список позиций в указанной категории</returns>
+        Task<List<Position>> GetActivePositionsByCategoryAsync(int? categoryId, CancellationToken ct = default);
         /// <summary>
         /// Запросить позицю по Id из БД
         /// </summary>

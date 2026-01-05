@@ -12,9 +12,11 @@ namespace FetchFood.Services
     class BotMenuHandler : BotCommandHandler
     {
         private readonly IMenuService _menuService;
-        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService) : base(update, botClient)
+        private readonly ICategoryService _categoryService;
+        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService, ICategoryService categoryService) : base(update, botClient)
         {
             _menuService = menuService;
+            _categoryService = categoryService;
         }
         public override async void Invoke()
         {
@@ -150,6 +152,33 @@ namespace FetchFood.Services
                 case BotCommands.BACK:
                     await HandleMenuPageCommandAsync(bot, _chatId, 0, ct);
                     break;
+
+                // показать категории
+                case BotCommands.CATEGORIES:
+                    await HandleShowCategoriesAsync(bot, _chatId, ct);
+                    break;
+
+                // показать позиции категории
+                case BotCommands.CATEGORY_POSITIONS:
+                    var categoryArgs = args.Split(':', StringSplitOptions.TrimEntries);
+                    if (categoryArgs.Length >= 1 && int.TryParse(categoryArgs[0], out var categoryId))
+                    {
+                        int categoryPage = 0;
+                        if (categoryArgs.Length >= 2 && int.TryParse(categoryArgs[1], out var parsedPage))
+                        {
+                            categoryPage = parsedPage;
+                        }
+                        await HandleCategoryPositionsAsync(bot, _chatId, categoryId, categoryPage, ct);
+                    }
+                    else
+                    {
+                        await bot.SendMessage(
+                            chatId: _chatId,
+                            text: "Не удалось распознать ID категории.",
+                            cancellationToken: ct);
+                    }
+                    break;
+
                 default:
                     await bot.SendMessage(
                         chatId: _chatId,
@@ -212,9 +241,15 @@ namespace FetchFood.Services
             InlineKeyboardButton.WithCallbackData("🗑 Удалить", $"{BotCommands.MENU}:{BotCommands.DELETE}")
             };
 
+            var categoryRow = new[]
+            {
+                InlineKeyboardButton.WithCallbackData("📂 Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}")
+            };
+
             var rows = new List<InlineKeyboardButton[]>();
             rows.AddRange(itemButtons);
             rows.Add(navRow.ToArray());
+            rows.Add(categoryRow);
             rows.Add(actionRow);
 
             var markup = new InlineKeyboardMarkup(rows);
@@ -285,13 +320,14 @@ namespace FetchFood.Services
             //    return;
             //}
 
-            // Ожидаемый формат: /addpos Имя;Цена;Состав;Описание;[ImageUrl]
+            // Ожидаемый формат: /addpos Имя;Цена;Состав;Описание;[ImageUrl];[CategoryId]
             if (string.IsNullOrWhiteSpace(args))
             {
                 await bot.SendMessage(chatId,
-                    $"Формат: {BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl]\n" +
+                    $"Формат: {BotCommands.MENU}:{BotCommands.ADD_POSITION}:Имя;Цена(руб.);Состав;Описание;[ImageUrl];[CategoryId]\n" +
                     $"Например:\n{BotCommands.MENU}:{BotCommands.ADD_POSITION}:Бургер;199.9;ингредиент1,ингредиент2;" +
-                    "Пара слов о блюде.;https://img",
+                    "Пара слов о блюде.;https://img;1\n\n" +
+                    "CategoryId - опциональный параметр (ID категории). Если не указан, позиция будет без категории.",
                     replyMarkup: new ForceReplyMarkup { Selective = true },
                     cancellationToken: ct);
                 return;
@@ -349,7 +385,25 @@ namespace FetchFood.Services
             string? description = parts.Length >= 3 ? parts[3] : null;
 
             // Парсим картинку, если есть
-            string? image = parts.Length == 5 ? parts[4] : null;
+            string? image = parts.Length >= 5 ? parts[4] : null;
+
+            // Парсим категорию, если есть
+            int? categoryId = null;
+            if (parts.Length >= 6 && !string.IsNullOrWhiteSpace(parts[5]) && int.TryParse(parts[5], out var parsedCategoryId))
+            {
+                // Проверяем, существует ли категория
+                var category = await _categoryService.GetCategoryByIdAsync(parsedCategoryId, ct);
+                if (category != null)
+                {
+                    categoryId = parsedCategoryId;
+                }
+                else
+                {
+                    await bot.SendMessage(chatId,
+                        $"⚠️ Категория с ID {parsedCategoryId} не найдена. Позиция будет добавлена без категории.",
+                        cancellationToken: ct);
+                }
+            }
 
             var pos = new Position
             {
@@ -358,7 +412,8 @@ namespace FetchFood.Services
                 Status = PositionStatus.Active,
                 Ingredients = string.IsNullOrEmpty(ingredients) ? null : ingredients.Trim(),
                 Description = string.IsNullOrEmpty(description) ? null : description.Trim(),
-                Image = string.IsNullOrWhiteSpace(image) ? null : image.Trim()
+                Image = string.IsNullOrWhiteSpace(image) ? null : image.Trim(),
+                PositionCategoryId = categoryId
             };
             try
             {
@@ -369,8 +424,18 @@ namespace FetchFood.Services
                     Console.WriteLine($"[AddPos ERROR]: Ошибка БД.");
                 }
 
+                string categoryInfo = "";
+                if (categoryId.HasValue)
+                {
+                    var category = await _categoryService.GetCategoryByIdAsync(categoryId.Value, ct);
+                    categoryInfo = category != null ? $" (категория: {category.Name})" : "";
+                }
+                else
+                {
+                    categoryInfo = " (без категории)";
+                }
                 await bot.SendMessage(chatId,
-                    $"✅ Добавлено: #{pos.PositionId} • {pos.Name} — {pos.Price:0.##}",
+                    $"✅ Добавлено: #{pos.PositionId} • {pos.Name} — {pos.Price:0.##}{categoryInfo}",
                     replyMarkup: UserMainInlineKeyboard(),
                     cancellationToken: ct);
             }
@@ -488,6 +553,10 @@ namespace FetchFood.Services
             var description = p.Description;
             StringBuilder outputMssg = new StringBuilder();
             outputMssg.Append($"{name}\nЦена: {price}");
+            if (p.Category != null)
+            {
+                outputMssg.Append($"\n📂 Категория: {p.Category.Name}");
+            }
             if (!string.IsNullOrWhiteSpace(ingredients))
             {
                 outputMssg.Append($"\nСостав: {ingredients}");
@@ -520,6 +589,110 @@ namespace FetchFood.Services
             }
 
             return new InlineKeyboardMarkup(buttons);
+        }
+
+        private async Task HandleShowCategoriesAsync(ITelegramBotClient bot, long chatId, CancellationToken ct)
+        {
+            var categories = await _categoryService.GetAllCategoriesAsync(ct);
+            
+            if (categories.Count == 0)
+            {
+                await bot.SendMessage(
+                    chatId,
+                    "Пока нет категорий. Все позиции отображаются в общем меню.",
+                    replyMarkup: new InlineKeyboardMarkup(new[]
+                    {
+                        new[] { InlineKeyboardButton.WithCallbackData("⬅️ Назад к меню", $"{BotCommands.MENU}:{BotCommands.BACK}") }
+                    }),
+                    cancellationToken: ct);
+                return;
+            }
+
+            var categoryButtons = categories
+                .Select(c => InlineKeyboardButton.WithCallbackData(
+                    c.Name ?? $"Категория #{c.PositionCategoryId}",
+                    $"{BotCommands.MENU}:{BotCommands.CATEGORY_POSITIONS}:{c.PositionCategoryId}"))
+                .Chunk(2)
+                .Select(r => r.ToArray())
+                .ToList();
+
+            var backButton = new[]
+            {
+                InlineKeyboardButton.WithCallbackData("⬅️ Назад к меню", $"{BotCommands.MENU}:{BotCommands.BACK}")
+            };
+
+            categoryButtons.Add(backButton);
+
+            await bot.SendMessage(
+                chatId,
+                "Выберите категорию:",
+                replyMarkup: new InlineKeyboardMarkup(categoryButtons),
+                cancellationToken: ct);
+        }
+
+        private async Task HandleCategoryPositionsAsync(ITelegramBotClient bot, long chatId, int categoryId, int page, CancellationToken ct)
+        {
+            var category = await _categoryService.GetCategoryByIdAsync(categoryId, ct);
+            if (category == null)
+            {
+                await bot.SendMessage(chatId, "Категория не найдена.", cancellationToken: ct);
+                return;
+            }
+
+            var positions = await _menuService.GetActivePositionsByCategoryAsync(categoryId, ct);
+            int total = positions.Count;
+            int totalPages = (int)Math.Ceiling(total / (double)GlobalParams.MENU_ITEMS_CNT);
+            if (totalPages == 0) totalPages = 1;
+            if (page < 0) page = 0;
+            if (page >= totalPages) page = totalPages - 1;
+
+            int skip = page * GlobalParams.MENU_ITEMS_CNT;
+            var pageItems = positions.Skip(skip).Take(GlobalParams.MENU_ITEMS_CNT).ToList();
+
+            if (pageItems.Count == 0)
+            {
+                await bot.SendMessage(
+                    chatId,
+                    $"В категории «{category.Name}» пока нет позиций.",
+                    replyMarkup: new InlineKeyboardMarkup(new[]
+                    {
+                        new[] { InlineKeyboardButton.WithCallbackData("⬅️ Назад к категориям", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}") }
+                    }),
+                    cancellationToken: ct);
+                return;
+            }
+
+            var itemButtons = pageItems
+                .Select(p =>
+                    InlineKeyboardButton.WithCallbackData(
+                        $"{p.Name} — {p.Price:0.##}",
+                        $"{BotCommands.MENU}:{BotCommands.POSITION}:{p.PositionId}"))
+                .Chunk(2)
+                .Select(r => r.ToArray())
+                .ToList();
+
+            var navRow = new List<InlineKeyboardButton>();
+            if (page > 0)
+                navRow.Add(InlineKeyboardButton.WithCallbackData("⬅️ Назад", $"{BotCommands.MENU}:{BotCommands.CATEGORY_POSITIONS}:{categoryId}:{page - 1}"));
+            if (page < totalPages - 1)
+                navRow.Add(InlineKeyboardButton.WithCallbackData("Далее ➡️", $"{BotCommands.MENU}:{BotCommands.CATEGORY_POSITIONS}:{categoryId}:{page + 1}"));
+
+            var backButton = new[]
+            {
+                InlineKeyboardButton.WithCallbackData("⬅️ Назад к категориям", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}")
+            };
+
+            var rows = new List<InlineKeyboardButton[]>();
+            rows.AddRange(itemButtons);
+            if (navRow.Count > 0)
+                rows.Add(navRow.ToArray());
+            rows.Add(backButton);
+
+            await bot.SendMessage(
+                chatId,
+                $"Категория: {category.Name}\nСтраница {page + 1}/{totalPages}:",
+                replyMarkup: new InlineKeyboardMarkup(rows),
+                cancellationToken: ct);
         }
 
         #endregion
