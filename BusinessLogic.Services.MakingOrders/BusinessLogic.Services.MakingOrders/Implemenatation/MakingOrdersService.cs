@@ -171,6 +171,9 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     return false;
                 }
 
+                // Очищаем корзину пользователя после сохранения заказа
+                await _cartService.ClearCartAsync(userId);
+
                 Orders order = new Orders
                 {
                     IdUser = userId,
@@ -187,6 +190,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 // Очищаем временные данные
                 await _ordersDataRepository.DeleteOrderDataAsync(userId);
+                
 
                 _logger.LogInformation($"Заказ №{createdOrder.OrderId} успешно создан для пользователя {userId}");
                 return true;
