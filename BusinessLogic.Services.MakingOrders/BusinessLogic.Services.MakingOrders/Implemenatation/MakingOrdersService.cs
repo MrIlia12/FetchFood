@@ -57,12 +57,28 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         {
             try
             {
+                // Получаем корзину пользователя
+                var cart = await _cartService.GetCartAsync(userId);
+
+                // Проверяем, что корзина не пустая
+                if (cart == null || cart.CartItems == null || !cart.CartItems.Any())
+                {
+                    _logger.LogWarning($"Попытка начать оформление заказа с пустой корзиной для пользователя {userId}");
+                    return false;
+                }
+
+                // Проверяем, что сумма заказа больше 0
+                if (cart.Price <= 0)
+                {
+                    _logger.LogWarning($"Попытка начать оформление заказа с нулевой суммой для пользователя {userId}");
+                    return false;
+                }
+
                 // Создаем временные данные для заказа
                 UserOrderData orderData = new UserOrderData
                 {
                     UserId = userId,
                     CurrentState = typeof(WaitingForAddressState).Name,
-                    CartItems = new List<CartItem>() // TODO: Здесь должна быть логика получения корзины
                 };
 
                 // Сохраняем временные данные в репозиторий временных заказов
