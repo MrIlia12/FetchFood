@@ -332,7 +332,7 @@ namespace BusinessLogic.Services.MakingOrders.States
             if (message == MakingOrdersCommands.SkipComment)
             {
                 // Пользователь выбрал "нет" - пропускаем комментарий
-                orderData.Comment = null;
+                orderData.Comment = "";
                 return await _context.ProceedToConfirmation(userId, orderData);
             }
             else if (message == MakingOrdersCommands.AddComment)

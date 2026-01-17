@@ -1,4 +1,5 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
+using BusinessLogic.Services.Cart.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.States;
 using DataAccess.Entities;
@@ -27,6 +28,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         private readonly IOrdersRepository _ordersRepository;
         private readonly IOrdersDataRepository _ordersDataRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ICartService _cartService;
         private Dictionary<string, OrderState> _states;
 
         public MakingOrdersService(
@@ -34,12 +36,14 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             IOrdersDataRepository ordersDataRepository,
             IAuthorizationService authorizationService,
             IUserRepository userRepository,
+            ICartService cartService,
             ILogger<MakingOrdersService> logger)
         {
             _logger = logger;
             _ordersRepository = ordersRepository;
             _ordersDataRepository = ordersDataRepository;
             _userRepository = userRepository;
+            _cartService = cartService;
             _states = new Dictionary<string, OrderState>
             {
                 { typeof(WaitingForAddressState).Name, new WaitingForAddressState(this) },
@@ -173,7 +177,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     Address = orderData.Address,
                     PhoneNumber = orderData.PhoneNumber,
                     Status = "Created",
-                    Price = (int)orderData.Price,
+                    Price = orderData.Price,
                     DateOrder = DateTime.UtcNow,
                     Comment = orderData.Comment
                 };
@@ -233,8 +237,10 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
             orderData.PhoneNumber = user.PhoneNumber;
             orderData.Name = user.Name;
-           // orderData.CurrentState = typeof(WaitingForConfirmationState).Name;
-           // await SaveOrderDataAsync(orderData);
+            // Получение данных корзины пользователя
+            var cart = await _cartService.GetCartAsync(userId);
+            orderData.Price = cart.Price;
+            orderData.CartItems = cart.CartItems;
 
 
             return new OrderProcessingResult
