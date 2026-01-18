@@ -53,6 +53,23 @@
         public const string CATEGORY = "category";
         public const string CATEGORIES = "categories";
         public const string CATEGORY_POSITIONS = "catpos";
+        // команды CRUD категорий
+        public const string ADD_CATEGORY = "addcat";
+        public const string EDIT_CATEGORY = "editcat";
+        public const string DELETE_CATEGORY = "delcat";
+        public const string EDIT_CATEGORY_NAME = "editcatname";
+        public const string EDIT_CATEGORY_DESC = "editcatdesc";
+        // команды редактирования позиций
+        public const string EDIT = "edit";
+        public const string EDIT_NAME = "editname";
+        public const string EDIT_PRICE = "editprice";
+        public const string EDIT_INGREDIENTS = "editing";
+        public const string EDIT_DESCRIPTION = "editdesc";
+        public const string EDIT_IMAGE = "editimg";
+        public const string EDIT_POS_CATEGORY = "editposcat";
+        // быстрое редактирование (все параметры одной командой)
+        public const string QUICK_EDIT_POS = "qpos";
+        public const string QUICK_EDIT_CAT = "qcat";
 
         // Временные уникальные кооманды
         public const string MENU1 = "Чтобы добавить позицию:\n" +

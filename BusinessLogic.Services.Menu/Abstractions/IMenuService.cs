@@ -50,5 +50,13 @@ namespace BusinessLogic.Services.Menu.Abstractions
         /// <param name="ct">Токен отмены (опционально)</param>
         /// <returns>Результат операции БД</returns>
         Task<bool> DeleteAsync(int id, CancellationToken ct = default);
+
+        /// <summary>
+        /// Обновить существующую позицию
+        /// </summary>
+        /// <param name="position">Обновляемая позиция</param>
+        /// <param name="ct">Токен отмены (опционально)</param>
+        /// <returns>Результат операции БД</returns>
+        Task<bool> UpdateAsync(Position position, CancellationToken ct = default);
     }
 }

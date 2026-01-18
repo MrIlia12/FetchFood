@@ -87,5 +87,11 @@ namespace BusinessLogic.Services.Menu.Implementation
         {
             return await _positionRepository.RemovePositionByIdAsync(id, ct);
         }
+
+        public async Task<bool> UpdateAsync(Position position, CancellationToken ct = default)
+        {
+            if (position is null) throw new ArgumentNullException(nameof(position));
+            return await _positionRepository.UpdatePositionAsync(position, ct);
+        }
     }
 }

@@ -94,7 +94,7 @@ namespace FetchFood.Services
             BotCommandHandler handler = commandPrefix switch
             {
                 MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService),
+                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
                 AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
                 BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService)
             };
@@ -108,7 +108,7 @@ namespace FetchFood.Services
 
             BotCommandHandler handler = replyMessage switch
             {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService),
+                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
                 BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
             };
 
