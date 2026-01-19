@@ -68,13 +68,23 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+            BotCommandHandler? handler = null;
 
-
-            BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
-                ? await GetHandlerAsync(update, update.CallbackQuery.Data)
-                : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
-                    ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
-                    : await HandleReplyMessage(update);
+            if (update.Type is UpdateType.CallbackQuery)
+            {
+                handler = await GetHandlerAsync(update, update.CallbackQuery!.Data!);
+            }
+            else if (update.Message is { } message)
+            {
+                if (message.Text == BotCommands.START || message.Type is MessageType.Contact)
+                {
+                    handler = new BotAuthorizationHandler(update, this._bot, this._authorizationService);
+                }
+                else
+                {
+                    handler = await HandleReplyMessage(update);
+                }
+            }
 
             handler?.Invoke();
         }
@@ -102,17 +112,27 @@ namespace FetchFood.Services
             return handler;
         }
 
-        private async Task<BotCommandHandler> HandleReplyMessage(Update update)
+        private Task<BotCommandHandler?> HandleReplyMessage(Update update)
         {
-            var replyMessage = update.Message.ReplyToMessage.Text;
+            // Если нет reply - вернуть null
+            if (update.Message?.ReplyToMessage?.Text is not { } replyMessage)
+                return Task.FromResult<BotCommandHandler?>(null);
 
-            BotCommandHandler handler = replyMessage switch
+            // Проверяем по префиксу команды в тексте промпта
+            if (replyMessage.Contains($"{MenuCommand.MENU}:"))
             {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
-                BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-            };
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
+            }
 
-            return handler;
+            if (replyMessage.Contains($"{MakingOrdersCommand.ORDER}:"))
+            {
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService));
+            }
+
+            // Неизвестный reply - игнорируем
+            return Task.FromResult<BotCommandHandler?>(null);
         }
 
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)
