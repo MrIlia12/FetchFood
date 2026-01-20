@@ -12,7 +12,9 @@ namespace FetchFood.Commands.Menu.Navigation
         public override async Task<bool> ExecuteAsync(MenuCommandContext ctx)
         {
             var categories = await ctx.CategoryService.GetAllCategoriesAsync(ctx.CancellationToken);
-            var isAdmin = await ctx.IsAdminAsync();
+            // ВРЕМЕННО
+            //var isAdmin = await ctx.IsAdminAsync();
+            bool isAdmin = true;
 
             var rows = new List<InlineKeyboardButton[]>();
 
