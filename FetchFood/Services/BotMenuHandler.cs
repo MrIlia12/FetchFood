@@ -40,9 +40,8 @@ namespace FetchFood.Services
                 new FindCommand(),
 
                 // CRUD позиций
-                new AddPositionPromptCommand(),
                 new AddPositionCommand(),
-                new DeletePositionPromptCommand(),
+                new SelectPositionToDeleteCommand(),
                 new DeletePositionCommand(),
 
                 // Редактирование позиций

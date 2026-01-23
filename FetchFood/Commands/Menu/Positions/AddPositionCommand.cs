@@ -7,11 +7,11 @@ namespace FetchFood.Commands.Menu.Positions
     /// <summary>
     /// Команда добавления новой позиции.
     /// </summary>
-    public class AddPositionCommand : BaseMenuCommand
+    public class AddPositionCommand : AdminMenuCommand
     {
         public override string CommandKey => BotCommands.ADD_POSITION;
 
-        public override async Task<bool> ExecuteAsync(MenuCommandContext ctx)
+        protected override async Task<bool> ExecuteAdminAsync(MenuCommandContext ctx)
         {
             if (string.IsNullOrWhiteSpace(ctx.Args))
             {

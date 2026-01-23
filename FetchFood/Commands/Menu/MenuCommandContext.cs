@@ -45,6 +45,11 @@ namespace FetchFood.Commands.Menu
         /// </summary>
         public IAuthorizationService AuthorizationService { get; }
 
+        /// <summary>
+        /// Кэшированный статус админа (null = ещё не проверялось)
+        /// </summary>
+        private bool? _isAdminCached;
+
         public MenuCommandContext(
             ITelegramBotClient bot,
             long chatId,
@@ -64,8 +69,18 @@ namespace FetchFood.Commands.Menu
         }
 
         /// <summary>
-        /// Проверить, является ли пользователь администратором
+        /// Проверить, является ли пользователь администратором.
+        /// Результат кэшируется на время жизни контекста.
         /// </summary>
-        public Task<bool> IsAdminAsync() => AuthorizationService.IsUserAdministratorAsync(ChatId);
+        public async Task<bool> IsAdminAsync()
+        {
+            // Если уже проверяли - возвращаем кэшированное значение
+            if (_isAdminCached.HasValue)
+                return _isAdminCached.Value;
+
+            // Первая проверка - запрашиваем у сервиса и кэшируем
+            _isAdminCached = await AuthorizationService.IsUserAdministratorAsync(ChatId);
+            return _isAdminCached.Value;
+        }
     }
 }

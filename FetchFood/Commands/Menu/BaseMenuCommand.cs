@@ -34,6 +34,19 @@ namespace FetchFood.Commands.Menu
         protected static string FormatPrice(decimal price) => $"{price:0.##}";
 
         /// <summary>
+        /// Парсинг аргументов вида "id:value"
+        /// </summary>
+        protected static (int? id, string? value) ParseIdAndValue(string args)
+        {
+            var parts = args.Split(':', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length < 1 || !int.TryParse(parts[0], out var id))
+                return (null, null);
+
+            var value = parts.Length >= 2 ? parts[1] : null;
+            return (id, value);
+        }
+
+        /// <summary>
         /// Кнопка "Назад к меню"
         /// </summary>
         protected static InlineKeyboardButton BackToMenuButton() =>
@@ -53,9 +66,7 @@ namespace FetchFood.Commands.Menu
     {
         public override async Task<bool> ExecuteAsync(MenuCommandContext context)
         {
-            // ВРЕМЕННО
-            //var isAdmin = await context.IsAdminAsync();
-            bool isAdmin = true;
+            var isAdmin = await context.IsAdminAsync();
 
             if (!isAdmin)
             {

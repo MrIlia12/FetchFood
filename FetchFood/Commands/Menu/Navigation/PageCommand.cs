@@ -56,17 +56,22 @@ namespace FetchFood.Commands.Menu.Navigation
                 InlineKeyboardButton.WithCallbackData("📂 Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}")
             };
 
-            var actionRow = new[]
-            {
-                InlineKeyboardButton.WithCallbackData("➕ Добавить", $"{BotCommands.MENU}:{BotCommands.ADD}"),
-                InlineKeyboardButton.WithCallbackData("🗑 Удалить", $"{BotCommands.MENU}:{BotCommands.DELETE}")
-            };
-
             var rows = new List<InlineKeyboardButton[]>();
             rows.AddRange(itemButtons);
             if (navRow.Count > 0) rows.Add(navRow.ToArray());
             rows.Add(categoryRow);
-            rows.Add(actionRow);
+
+            // Показываем кнопки добавления/удаления только админам
+            var isAdmin = await ctx.IsAdminAsync();
+            if (isAdmin)
+            {
+                var actionRow = new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("➕ Добавить", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}"),
+                    InlineKeyboardButton.WithCallbackData("🗑 Удалить", $"{BotCommands.MENU}:{BotCommands.DELETE}")
+                };
+                rows.Add(actionRow);
+            }
 
             string header = $"Меню (стр. {page + 1}/{totalPages}):\nВыберите позицию, чтобы посмотреть детали.";
 

@@ -3,65 +3,55 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace FetchFood.Commands.Menu.Positions
 {
     /// <summary>
-    /// Команда удаления позиции.
+    /// Команда удаления позиции по ID.
     /// </summary>
-    public class DeletePositionCommand : BaseMenuCommand
+    public class DeletePositionCommand : AdminMenuCommand
     {
         public override string CommandKey => BotCommands.DELETE_POSITION;
 
-        public override async Task<bool> ExecuteAsync(MenuCommandContext ctx)
+        protected override async Task<bool> ExecuteAdminAsync(MenuCommandContext ctx)
         {
-            var query = ctx.Args?.Trim();
-
-            if (string.IsNullOrWhiteSpace(query))
+            // Ожидаем ID позиции
+            if (!int.TryParse(ctx.Args, out var positionId))
             {
                 await SendMessageAsync(ctx,
-                    $"Формат: {BotCommands.MENU}:{BotCommands.DELETE_POSITION}:<название>\n" +
-                    $"Например: {BotCommands.MENU}:{BotCommands.DELETE_POSITION}:Бургер");
+                    "Некорректный ID позиции.",
+                    new InlineKeyboardMarkup(new[] { new[] { BackToMenuButton() } }));
                 return true;
             }
 
             try
             {
-                var matches = await ctx.MenuService.SearchPositionsAsync(query, false, ctx.CancellationToken);
+                var position = await ctx.MenuService.GetPositionAsync(positionId, ctx.CancellationToken);
 
-                if (matches.Count == 0)
+                if (position == null)
                 {
-                    await SendMessageAsync(ctx, "❌ Позиции не найдены.");
-                    return true;
-                }
-
-                if (matches.Count == 1)
-                {
-                    var p = matches[0];
-                    var ok = await ctx.MenuService.DeleteAsync(p.PositionId, ctx.CancellationToken);
                     await SendMessageAsync(ctx,
-                        ok ? $"🗑️ Удалено: {p.Name} (#{p.PositionId})" : "Не удалось удалить позицию.",
+                        "Позиция не найдена.",
                         new InlineKeyboardMarkup(new[] { new[] { BackToMenuButton() } }));
                     return true;
                 }
 
-                // Ищем точное совпадение
-                var exact = matches.FirstOrDefault(p =>
-                    string.Equals(p.Name, query, StringComparison.OrdinalIgnoreCase));
+                var ok = await ctx.MenuService.DeleteAsync(positionId, ctx.CancellationToken);
 
-                if (exact is not null)
+                if (ok)
                 {
-                    var ok = await ctx.MenuService.DeleteAsync(exact.PositionId, ctx.CancellationToken);
                     await SendMessageAsync(ctx,
-                        ok ? $"🗑️ Удалено: {exact.Name} (#{exact.PositionId})" : "Не удалось удалить позицию.");
-                    return true;
+                        $"🗑️ Удалено: {position.Name} (#{position.PositionId})",
+                        new InlineKeyboardMarkup(new[] { new[] { BackToMenuButton() } }));
                 }
-
-                // Просим уточнить
-                var list = string.Join("\n", matches.Take(10).Select(p => $"#{p.PositionId}: {p.Name} ({p.Price:F2})"));
-                await SendMessageAsync(ctx,
-                    $"Найдено несколько позиций:\n{list}\n\n" +
-                    $"Уточните название (Например: `{BotCommands.MENU}:{BotCommands.DELETE_POSITION}:Бургер классик`)");
+                else
+                {
+                    await SendMessageAsync(ctx,
+                        "❌ Не удалось удалить позицию.",
+                        new InlineKeyboardMarkup(new[] { new[] { BackToMenuButton() } }));
+                }
             }
             catch (Exception ex)
             {
-                await SendMessageAsync(ctx, "⚠️ Ошибка при удалении позиции.");
+                await SendMessageAsync(ctx,
+                    "⚠️ Ошибка при удалении позиции.",
+                    new InlineKeyboardMarkup(new[] { new[] { BackToMenuButton() } }));
                 Console.WriteLine($"[DelPos ERROR]: {ex}");
             }
 
