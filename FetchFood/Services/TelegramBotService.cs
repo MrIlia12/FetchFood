@@ -7,6 +7,7 @@ using BusinessLogic.Services.Cart.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
+using FetchFood.Commands.Menu.Positions;
 using System.Net;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -114,6 +115,15 @@ namespace FetchFood.Services
 
         private Task<BotCommandHandler?> HandleReplyMessage(Update update)
         {
+            var chatId = update.Message?.Chat.Id ?? 0;
+
+            // Проверяем, есть ли активная сессия создания позиции
+            if (AddPositionHandler.HasActiveSession(chatId))
+            {
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
+            }
+
             // Если нет reply - вернуть null
             if (update.Message?.ReplyToMessage?.Text is not { } replyMessage)
                 return Task.FromResult<BotCommandHandler?>(null);

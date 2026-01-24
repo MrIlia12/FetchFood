@@ -86,7 +86,13 @@ namespace FetchFood.Services
                     var fileId = mssg.Photo.Last().FileId;
                     var replyText = mssg.ReplyToMessage?.Text;
 
-                    if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
+                    // Проверяем активную сессию создания позиции (шаг image)
+                    if (AddPositionHandler.HasActiveSession(chatId) &&
+                        AddPositionHandler.GetCurrentStep(chatId) == "image")
+                    {
+                        data = $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:photo:{fileId}";
+                    }
+                    else if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
                     {
                         // Извлекаем команду из текста промпта (например "menu:edit_image:5:")
                         var commandMatch = System.Text.RegularExpressions.Regex.Match(
@@ -100,6 +106,11 @@ namespace FetchFood.Services
                             data = $"{BotCommands.MENU}:{action}:{id}:{fileId}";
                         }
                     }
+                }
+                // Проверяем активную сессию создания позиции для текстового ввода
+                else if (AddPositionHandler.HasActiveSession(chatId) && !string.IsNullOrEmpty(mssg.Text))
+                {
+                    data = $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:{mssg.Text}";
                 }
                 else
                 {
