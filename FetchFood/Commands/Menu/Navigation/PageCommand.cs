@@ -61,14 +61,13 @@ namespace FetchFood.Commands.Menu.Navigation
             if (navRow.Count > 0) rows.Add(navRow.ToArray());
             rows.Add(categoryRow);
 
-            // Показываем кнопки добавления/удаления только админам
+            // Показываем кнопку добавления только админам
             var isAdmin = await ctx.IsAdminAsync();
             if (isAdmin)
             {
                 var actionRow = new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("➕ Добавить", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}"),
-                    InlineKeyboardButton.WithCallbackData("🗑 Удалить", $"{BotCommands.MENU}:{BotCommands.DELETE}")
+                    InlineKeyboardButton.WithCallbackData("➕ Добавить", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:start")
                 };
                 rows.Add(actionRow);
             }

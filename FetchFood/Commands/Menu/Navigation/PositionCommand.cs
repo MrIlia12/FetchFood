@@ -74,6 +74,9 @@ namespace FetchFood.Commands.Menu.Navigation
                     mainRow.Add(InlineKeyboardButton.WithCallbackData(
                         "✏️ Редактировать",
                         $"{BotCommands.MENU}:{BotCommands.EDIT}:{posNum}"));
+                    mainRow.Add(InlineKeyboardButton.WithCallbackData(
+                        "🗑 Удалить",
+                        $"{BotCommands.MENU}:{BotCommands.CONFIRM_DELETE}:{posNum}"));
                 }
 
                 buttons.Add(mainRow.ToArray());

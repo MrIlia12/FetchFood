@@ -59,6 +59,7 @@
         public const string DELETE_CATEGORY = "delcat";
         public const string EDIT_CATEGORY_NAME = "editcatname";
         public const string EDIT_CATEGORY_DESC = "editcatdesc";
+        public const string CONFIRM_DELETE = "confirm_del";
         // команды редактирования позиций
         public const string EDIT = "edit";
         public const string EDIT_NAME = "editname";
