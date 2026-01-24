@@ -79,7 +79,32 @@ namespace FetchFood.Services
             {
                 var mssg = Update.Message;
                 chatId = mssg.Chat.Id;
-                data = mssg.Text;
+
+                // Обработка фото: извлекаем FileId и формируем команду из ReplyToMessage
+                if (mssg.Photo != null && mssg.Photo.Length > 0)
+                {
+                    var fileId = mssg.Photo.Last().FileId;
+                    var replyText = mssg.ReplyToMessage?.Text;
+
+                    if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
+                    {
+                        // Извлекаем команду из текста промпта (например "menu:edit_image:5:")
+                        var commandMatch = System.Text.RegularExpressions.Regex.Match(
+                            replyText,
+                            $@"{BotCommands.MENU}:(\w+):(\d+):");
+
+                        if (commandMatch.Success)
+                        {
+                            var action = commandMatch.Groups[1].Value;
+                            var id = commandMatch.Groups[2].Value;
+                            data = $"{BotCommands.MENU}:{action}:{id}:{fileId}";
+                        }
+                    }
+                }
+                else
+                {
+                    data = mssg.Text;
+                }
             }
             else
             {
