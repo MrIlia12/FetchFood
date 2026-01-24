@@ -29,6 +29,23 @@ namespace FetchFood.Commands.Menu
         }
 
         /// <summary>
+        /// Отправить фото с подписью
+        /// </summary>
+        protected static Task SendPhotoAsync(
+            MenuCommandContext ctx,
+            string fileId,
+            string? caption = null,
+            ReplyMarkup? replyMarkup = null)
+        {
+            return ctx.Bot.SendPhoto(
+                chatId: ctx.ChatId,
+                photo: InputFile.FromFileId(fileId),
+                caption: caption,
+                replyMarkup: replyMarkup,
+                cancellationToken: ctx.CancellationToken);
+        }
+
+        /// <summary>
         /// Форматирование цены
         /// </summary>
         protected static string FormatPrice(decimal price) => $"{price:0.##}";

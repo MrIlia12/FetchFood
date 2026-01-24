@@ -34,7 +34,24 @@ namespace FetchFood.Commands.Menu.Navigation
             }
 
             var keyboard = await BuildKeyboardAsync(posNum, ctx);
-            await SendMessageAsync(ctx, mssgTxt, keyboard);
+
+            if (!string.IsNullOrWhiteSpace(pos?.Image))
+            {
+                try
+                {
+                    await SendPhotoAsync(ctx, pos.Image, mssgTxt, keyboard);
+                }
+                catch (Telegram.Bot.Exceptions.ApiRequestException)
+                {
+                    // Невалидный file_id — показываем текст
+                    await SendMessageAsync(ctx, mssgTxt, keyboard);
+                }
+            }
+            else
+            {
+                await SendMessageAsync(ctx, mssgTxt, keyboard);
+            }
+
             return true;
         }
 
