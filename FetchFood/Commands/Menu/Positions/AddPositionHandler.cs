@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using DataAccess.Entities;
 using DataAccess.Entities.Models;
+using FetchFood.Services;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FetchFood.Commands.Menu.Positions
@@ -85,6 +86,7 @@ namespace FetchFood.Commands.Menu.Positions
         private async Task<bool> CancelAsync(MenuCommandContext ctx)
         {
             _sessions.TryRemove(ctx.ChatId, out _);
+            BotMenuHandler.RemovePendingCommand(ctx.ChatId);
 
             await SendMessageAsync(ctx,
                 "❌ Создание позиции отменено.",
@@ -304,8 +306,8 @@ namespace FetchFood.Commands.Menu.Positions
                     await SendMessageAsync(ctx, statusText, buttons);
                 }
 
-                // Затем отправляем промпт с ForceReply
-                var promptText = BuildForceReplyPrompt(data);
+                // Затем отправляем запрос с ForceReply
+                var promptText = BuildForceReplyPrompt(ctx.ChatId, data);
                 await SendMessageAsync(ctx, promptText, new ForceReplyMarkup { Selective = true });
             }
             else
@@ -316,10 +318,8 @@ namespace FetchFood.Commands.Menu.Positions
             }
         }
 
-        /// <summary>
-        /// Построить текст промпта с командой для ForceReply.
-        /// </summary>
-        private static string BuildForceReplyPrompt(CreationData data)
+        // Построить текст запроса для ForceReply
+        private static string BuildForceReplyPrompt(long chatId, CreationData data)
         {
             var step = data.CurrentStep;
             var prompt = step switch
@@ -332,8 +332,10 @@ namespace FetchFood.Commands.Menu.Positions
                 _ => "Введите значение:"
             };
 
-            // Команда в тексте для маршрутизации ответа
-            return $"{prompt}\n{BotCommands.MENU}:{BotCommands.ADD_POSITION}:{step}:";
+            // Сохраняем команду которую ждём
+            BotMenuHandler.SetPendingCommand(chatId, $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:{step}:");
+
+            return prompt;
         }
 
         /// <summary>

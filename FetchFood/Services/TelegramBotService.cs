@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Services.Administration.Abstraction;
+using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
@@ -30,7 +30,13 @@ namespace FetchFood.Services
         private readonly ICartService _cartService;
         private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService, BusinessLogic.Services.Menu.Abstractions.ICategoryService categoryService)
+        public TelegramBotService(
+            IAuthorizationService authorizationService,
+            ICartService cartService,
+            IAdministrationService administrationService,
+            IMenuService menuService,
+            IMakingOrdersService makingOrdersService,
+            ICategoryService categoryService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
@@ -96,7 +102,7 @@ namespace FetchFood.Services
             {
                 commandPrefix = command.Split(CommandsBase.Separator)[0];
             }
-            catch 
+            catch
             {
                 throw new ArgumentException("Неверный формат команды.");
             }
@@ -114,6 +120,15 @@ namespace FetchFood.Services
 
         private Task<BotCommandHandler?> HandleReplyMessage(Update update)
         {
+            var chatId = update.Message?.Chat.Id ?? 0;
+
+            // Проверяем есть ли сохранённая команда для меню
+            if (BotMenuHandler.HasPendingCommand(chatId))
+            {
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
+            }
+
             // Если нет reply - вернуть null
             if (update.Message?.ReplyToMessage?.Text is not { } replyMessage)
                 return Task.FromResult<BotCommandHandler?>(null);
@@ -142,4 +157,3 @@ namespace FetchFood.Services
         }
     }
 }
-

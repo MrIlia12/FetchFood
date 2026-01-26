@@ -1,21 +1,54 @@
 using BusinessLogic.Services.Menu.Abstractions;
 using BusinessLogic.Services.Authorization.Abstractions;
-using Telegram.Bot;
-using Telegram.Bot.Types;
 using FetchFood.Commands.Menu;
 using FetchFood.Commands.Menu.Navigation;
 using FetchFood.Commands.Menu.Categories;
 using FetchFood.Commands.Menu.Positions;
+using Telegram.Bot;
+using Telegram.Bot.Types;
 
 namespace FetchFood.Services
 {
-    /// <summary>
-    /// Обработчик команд меню.
-    /// Использует Command Pattern для маршрутизации команд.
-    /// </summary>
+    // Обработчик команд меню
     class BotMenuHandler : BotCommandHandler
     {
         private readonly MenuCommandDispatcher _dispatcher;
+
+        // Словарь для хранения ожидаемых команд от пользователей
+        private static Dictionary<long, string> _pendingCommands = new Dictionary<long, string>();
+
+        // Сохранить команду которую ждём от пользователя
+        public static void SetPendingCommand(long chatId, string command)
+        {
+            _pendingCommands[chatId] = command;
+        }
+
+        // Получить сохранённую команду (и удалить её)
+        public static string? GetPendingCommand(long chatId)
+        {
+            if (_pendingCommands.ContainsKey(chatId))
+            {
+                var command = _pendingCommands[chatId];
+                _pendingCommands.Remove(chatId);
+                return command;
+            }
+            return null;
+        }
+
+        // Проверить есть ли сохранённая команда
+        public static bool HasPendingCommand(long chatId)
+        {
+            return _pendingCommands.ContainsKey(chatId);
+        }
+
+        // Удалить сохранённую команду
+        public static void RemovePendingCommand(long chatId)
+        {
+            if (_pendingCommands.ContainsKey(chatId))
+            {
+                _pendingCommands.Remove(chatId);
+            }
+        }
 
         public BotMenuHandler(
             Update update,
@@ -80,16 +113,48 @@ namespace FetchFood.Services
                 var mssg = Update.Message;
                 chatId = mssg.Chat.Id;
 
-                var replyText = mssg.ReplyToMessage?.Text;
+                // Получаем сохранённую команду (если есть)
+                var pending = GetPendingCommand(chatId);
 
-                // Обработка фото: извлекаем FileId и формируем команду из ReplyToMessage
+                // Обработка фото
                 if (mssg.Photo != null && mssg.Photo.Length > 0)
                 {
                     var fileId = mssg.Photo.Last().FileId;
 
-                    if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
+                    if (pending != null)
                     {
-                        // Извлекаем команду из текста промпта (например "menu:edit_image:5:" или "menu:addpos:image:")
+                        data = pending + fileId;
+                    }
+                    else
+                    {
+                        // проверяем ReplyToMessage
+                        var replyText = mssg.ReplyToMessage?.Text;
+                        if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
+                        {
+                            var commandMatch = System.Text.RegularExpressions.Regex.Match(
+                                replyText,
+                                $@"{BotCommands.MENU}:(\w+):(\w+):");
+
+                            if (commandMatch.Success)
+                            {
+                                var action = commandMatch.Groups[1].Value;
+                                var arg = commandMatch.Groups[2].Value;
+                                data = $"{BotCommands.MENU}:{action}:{arg}:{fileId}";
+                            }
+                        }
+                    }
+                }
+                // Обработка текста
+                else if (pending != null && !string.IsNullOrEmpty(mssg.Text))
+                {
+                    data = pending + mssg.Text;
+                }
+                else
+                {
+                    // проверяем ReplyToMessage
+                    var replyText = mssg.ReplyToMessage?.Text;
+                    if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:") && !string.IsNullOrEmpty(mssg.Text))
+                    {
                         var commandMatch = System.Text.RegularExpressions.Regex.Match(
                             replyText,
                             $@"{BotCommands.MENU}:(\w+):(\w+):");
@@ -98,32 +163,17 @@ namespace FetchFood.Services
                         {
                             var action = commandMatch.Groups[1].Value;
                             var arg = commandMatch.Groups[2].Value;
-                            data = $"{BotCommands.MENU}:{action}:{arg}:{fileId}";
+                            data = $"{BotCommands.MENU}:{action}:{arg}:{mssg.Text}";
                         }
-                    }
-                }
-                // Обработка текстового reply: объединяем команду из запроса с текстом пользователя
-                else if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:") && !string.IsNullOrEmpty(mssg.Text))
-                {
-                    // Извлекаем команду из текста запроса (например "menu:addpos:name:" или "menu:edit_name:5:")
-                    var commandMatch = System.Text.RegularExpressions.Regex.Match(
-                        replyText,
-                        $@"{BotCommands.MENU}:(\w+):(\w+):");
-
-                    if (commandMatch.Success)
-                    {
-                        var action = commandMatch.Groups[1].Value;
-                        var arg = commandMatch.Groups[2].Value;
-                        data = $"{BotCommands.MENU}:{action}:{arg}:{mssg.Text}";
+                        else
+                        {
+                            data = mssg.Text;
+                        }
                     }
                     else
                     {
                         data = mssg.Text;
                     }
-                }
-                else
-                {
-                    data = mssg.Text;
                 }
             }
             else
@@ -148,7 +198,6 @@ namespace FetchFood.Services
             string action = messageSplitted[1];
             string args = messageSplitted.Length >= 3 ? messageSplitted[2] : BotCommands.EMPTY;
 
-            // Пытаемся выполнить команду через диспетчер
             var handled = await _dispatcher.DispatchAsync(bot, chatId, action, args, ct);
 
             if (!handled)

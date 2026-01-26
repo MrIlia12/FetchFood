@@ -1,3 +1,4 @@
+using FetchFood.Services;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace FetchFood.Commands.Menu.Categories
@@ -24,8 +25,10 @@ namespace FetchFood.Commands.Menu.Categories
 
             if (string.IsNullOrWhiteSpace(newValue))
             {
+                // Сохраняем команду которую ждём
+                BotMenuHandler.SetPendingCommand(ctx.ChatId, $"{BotCommands.MENU}:{CommandKey}:{categoryId}:");
                 await SendMessageAsync(ctx,
-                    $"Введите новое {FieldNameRu}:\n{BotCommands.MENU}:{CommandKey}:{categoryId}:НовоеЗначение",
+                    $"Введите новое {FieldNameRu}:",
                     new ForceReplyMarkup { Selective = true });
                 return true;
             }

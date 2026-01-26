@@ -1,8 +1,8 @@
+using FetchFood.Services;
+
 namespace FetchFood.Commands.Menu.Navigation
 {
-    /// <summary>
-    /// Команда возврата в главное меню (перенаправляет на PageCommand).
-    /// </summary>
+    // Команда возврата в главное меню
     public class BackCommand : BaseMenuCommand
     {
         public override string CommandKey => BotCommands.BACK;
@@ -11,6 +11,9 @@ namespace FetchFood.Commands.Menu.Navigation
 
         public override Task<bool> ExecuteAsync(MenuCommandContext ctx)
         {
+            // Удаляем сохранённую команду при возврате в меню
+            BotMenuHandler.RemovePendingCommand(ctx.ChatId);
+
             // Создаём новый контекст с args = "0" для первой страницы
             var newContext = new MenuCommandContext(
                 ctx.Bot,

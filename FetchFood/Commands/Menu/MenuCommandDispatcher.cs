@@ -4,10 +4,8 @@ using Telegram.Bot;
 
 namespace FetchFood.Commands.Menu
 {
-    /// <summary>
-    /// Диспетчер команд меню.
-    /// Регистрирует и маршрутизирует команды по их ключам.
-    /// </summary>
+    // Диспетчер команд меню
+    // Хранит все команды и вызывает нужную по ключу
     public class MenuCommandDispatcher
     {
         private readonly Dictionary<string, IMenuCommand> _commands = new();
@@ -25,18 +23,14 @@ namespace FetchFood.Commands.Menu
             _authorizationService = authorizationService;
         }
 
-        /// <summary>
-        /// Зарегистрировать команду
-        /// </summary>
+        // Зарегистрировать одну команду
         public MenuCommandDispatcher Register(IMenuCommand command)
         {
             _commands[command.CommandKey] = command;
             return this;
         }
 
-        /// <summary>
-        /// Зарегистрировать несколько команд
-        /// </summary>
+        // Зарегистрировать несколько команд сразу
         public MenuCommandDispatcher RegisterAll(params IMenuCommand[] commands)
         {
             foreach (var command in commands)
@@ -46,15 +40,7 @@ namespace FetchFood.Commands.Menu
             return this;
         }
 
-        /// <summary>
-        /// Выполнить команду по ключу
-        /// </summary>
-        /// <param name="bot">Telegram Bot Client</param>
-        /// <param name="chatId">ID чата</param>
-        /// <param name="commandKey">Ключ команды</param>
-        /// <param name="args">Аргументы команды</param>
-        /// <param name="ct">Токен отмены</param>
-        /// <returns>True если команда обработана</returns>
+        // Выполнить команду по ключу
         public async Task<bool> DispatchAsync(
             ITelegramBotClient bot,
             long chatId,
@@ -62,10 +48,12 @@ namespace FetchFood.Commands.Menu
             string args,
             CancellationToken ct = default)
         {
-            if (!_commands.TryGetValue(commandKey, out var command))
+            if (!_commands.ContainsKey(commandKey))
             {
                 return false;
             }
+
+            var command = _commands[commandKey];
 
             var context = new MenuCommandContext(
                 bot,
@@ -78,15 +66,5 @@ namespace FetchFood.Commands.Menu
 
             return await command.ExecuteAsync(context);
         }
-
-        /// <summary>
-        /// Проверить, зарегистрирована ли команда
-        /// </summary>
-        public bool HasCommand(string commandKey) => _commands.ContainsKey(commandKey);
-
-        /// <summary>
-        /// Получить все зарегистрированные ключи команд
-        /// </summary>
-        public IEnumerable<string> GetRegisteredKeys() => _commands.Keys;
     }
 }
