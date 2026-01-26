@@ -6,17 +6,19 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using System.Text;
 using FetchFood.Commands;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 namespace FetchFood.Services
 {
     class BotMenuHandler : BotCommandHandler
     {
         private readonly IMenuService _menuService;
-        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService) : base(update, botClient)
+        public BotMenuHandler(Update update, ITelegramBotClient botClient, IMenuService menuService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _menuService = menuService;
         }
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             string? data = string.Empty;
             long chatId;

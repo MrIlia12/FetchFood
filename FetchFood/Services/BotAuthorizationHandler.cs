@@ -4,6 +4,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot;
 using FetchFood.Commands;
 using BusinessLogic.Services.Authorization.Abstractions;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 namespace FetchFood.Services
 {
@@ -17,11 +19,11 @@ namespace FetchFood.Services
         /// <summary>
         /// ctor.
         /// </summary>
-        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService) : base(update, botClient)
+        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _authorizationService = authorizationService;
         }
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
@@ -49,6 +51,8 @@ namespace FetchFood.Services
                     return;
                 }
 
+                var state = this._userState[userId];
+                this._userState[userId].State.ToNextState(state);
                 await ShowMenuButton(message.Chat.Id);
             }
             catch (Exception ex)

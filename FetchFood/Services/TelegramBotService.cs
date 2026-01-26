@@ -14,6 +14,8 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using static System.Net.Mime.MediaTypeNames;
+using System.Collections.Concurrent;
+using FetchFood.States;
 
 
 namespace FetchFood.Services
@@ -28,6 +30,7 @@ namespace FetchFood.Services
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
         private readonly ICartService _cartService;
+        private readonly ConcurrentDictionary<long, UserState> _usersState = new();
 
         public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
         {
@@ -66,38 +69,66 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
+            var userId = update.Type is UpdateType.CallbackQuery
+                ? update.CallbackQuery.From.Id
+                : update.Message.From.Id;
 
+            var userState = _usersState.GetOrAdd(userId, new UserState(new NonAuthorizedUser()));
 
-            BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
-                ? await GetHandlerAsync(update, update.CallbackQuery.Data)
-                : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
-                    ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
-                    : await HandleReplyMessage(update);
+            BotCommandHandler? handler = await GetHandlerAsync(update, userState);
 
             handler?.Invoke();
         }
 
-        private async Task<BotCommandHandler> GetHandlerAsync(Update update, string command)
+        private async Task<BotCommandHandler> GetHandlerAsync(Update update, UserState userState)
         {
             string commandPrefix;
-            try
+            BotCommandHandler handler;
+            switch (userState.State)
             {
-                commandPrefix = command.Split(CommandsBase.Separator)[0];
-            }
-            catch 
-            {
-                throw new ArgumentException("Неверный формат команды.");
-            }
+                case NonAuthorizedUser:
+                    return new BotAuthorizationHandler(update, this._bot, this._authorizationService, this._usersState);
 
-            BotCommandHandler handler = commandPrefix switch
-            {
-                MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService),
-                AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
-                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService)
-            };
+                case AuthorizedUser:
+                    if (update.CallbackQuery.Data == MakingOrdersCommand.StartOrder.Command)
+                    {
+                        var userId = update.CallbackQuery.From.Id;
+                        var state = this._usersState[userId];
+                        this._usersState[userId].State.ToNextState(state);
+                        return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState);
+                    }
 
-            return handler;
+                    try
+                    {
+                        commandPrefix = update.CallbackQuery.Data.Split(CommandsBase.Separator)[0];
+                    }
+                    catch
+                    {
+                        throw new ArgumentException("Неверный формат команды.");
+                    }
+
+                    handler = commandPrefix switch
+                    {
+                        MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._usersState),
+                        AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService, this._usersState),
+                        BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService, this._usersState),
+                    };
+
+                    if (handler is null)
+                    {
+                            await _bot.SendMessage(
+                                    chatId: update.CallbackQuery.Message.Chat.Id,
+                                    text: "В данный момент Вы не можете сделать это.");
+                    }
+
+                    return handler;
+
+                case IsMakingOrder:
+                    return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState);
+
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         private async Task<BotCommandHandler> HandleReplyMessage(Update update)
@@ -112,8 +143,8 @@ namespace FetchFood.Services
 
             BotCommandHandler handler = replyMessage switch
             {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService),
-                BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
+                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._usersState),
+                BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState),
                 _ => null
             };
 

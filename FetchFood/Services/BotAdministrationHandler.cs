@@ -4,6 +4,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot;
 using BusinessLogic.Services.Administration.Abstraction;
 using Telegram.Bot;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 namespace FetchFood.Services
 {
@@ -14,14 +16,19 @@ namespace FetchFood.Services
         /// <summary>
         /// ctor.
         /// </summary>
-        public BotAdministrationHandler(Update update, ITelegramBotClient botClient, IAdministrationService administrationnService) : base(update, botClient)
+        public BotAdministrationHandler(
+            Update update,
+            ITelegramBotClient botClient, 
+            IAdministrationService administrationnService,
+            ConcurrentDictionary<long, UserState> userState) 
+            : base(update, botClient, userState)
         {
             _administrationnService = administrationnService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
-
+           throw new NotImplementedException();
         }
     }
 }

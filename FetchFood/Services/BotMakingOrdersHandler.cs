@@ -4,6 +4,8 @@ using FetchFood.Commands;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 
 namespace FetchFood.Services
@@ -14,12 +16,12 @@ namespace FetchFood.Services
     class BotMakingOrdersHandler : BotCommandHandler
     {
         private readonly IMakingOrdersService _makingOrdersService;
-        public BotMakingOrdersHandler(Update update, ITelegramBotClient botClient, IMakingOrdersService makingOrdersService) : base(update, botClient)
+        public BotMakingOrdersHandler(Update update, ITelegramBotClient botClient, IMakingOrdersService makingOrdersService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _makingOrdersService = makingOrdersService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
