@@ -80,37 +80,46 @@ namespace FetchFood.Services
                 var mssg = Update.Message;
                 chatId = mssg.Chat.Id;
 
+                var replyText = mssg.ReplyToMessage?.Text;
+
                 // Обработка фото: извлекаем FileId и формируем команду из ReplyToMessage
                 if (mssg.Photo != null && mssg.Photo.Length > 0)
                 {
                     var fileId = mssg.Photo.Last().FileId;
-                    var replyText = mssg.ReplyToMessage?.Text;
 
-                    // Проверяем активную сессию создания позиции (шаг image)
-                    if (AddPositionHandler.HasActiveSession(chatId) &&
-                        AddPositionHandler.GetCurrentStep(chatId) == "image")
+                    if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
                     {
-                        data = $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:photo:{fileId}";
-                    }
-                    else if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:"))
-                    {
-                        // Извлекаем команду из текста промпта (например "menu:edit_image:5:")
+                        // Извлекаем команду из текста промпта (например "menu:edit_image:5:" или "menu:addpos:image:")
                         var commandMatch = System.Text.RegularExpressions.Regex.Match(
                             replyText,
-                            $@"{BotCommands.MENU}:(\w+):(\d+):");
+                            $@"{BotCommands.MENU}:(\w+):(\w+):");
 
                         if (commandMatch.Success)
                         {
                             var action = commandMatch.Groups[1].Value;
-                            var id = commandMatch.Groups[2].Value;
-                            data = $"{BotCommands.MENU}:{action}:{id}:{fileId}";
+                            var arg = commandMatch.Groups[2].Value;
+                            data = $"{BotCommands.MENU}:{action}:{arg}:{fileId}";
                         }
                     }
                 }
-                // Проверяем активную сессию создания позиции для текстового ввода
-                else if (AddPositionHandler.HasActiveSession(chatId) && !string.IsNullOrEmpty(mssg.Text))
+                // Обработка текстового reply: объединяем команду из запроса с текстом пользователя
+                else if (!string.IsNullOrEmpty(replyText) && replyText.Contains($"{BotCommands.MENU}:") && !string.IsNullOrEmpty(mssg.Text))
                 {
-                    data = $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:{mssg.Text}";
+                    // Извлекаем команду из текста запроса (например "menu:addpos:name:" или "menu:edit_name:5:")
+                    var commandMatch = System.Text.RegularExpressions.Regex.Match(
+                        replyText,
+                        $@"{BotCommands.MENU}:(\w+):(\w+):");
+
+                    if (commandMatch.Success)
+                    {
+                        var action = commandMatch.Groups[1].Value;
+                        var arg = commandMatch.Groups[2].Value;
+                        data = $"{BotCommands.MENU}:{action}:{arg}:{mssg.Text}";
+                    }
+                    else
+                    {
+                        data = mssg.Text;
+                    }
                 }
                 else
                 {

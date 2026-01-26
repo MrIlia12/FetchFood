@@ -223,12 +223,18 @@ namespace FetchFood.Commands.Menu.Positions
                 return await StartAsync(ctx);
             }
 
+            // Извлекаем значение из формата "{step}:{value}"
             var input = ctx.Args;
+            var colonIndex = input?.IndexOf(':') ?? -1;
+            if (colonIndex > 0 && input != null)
+            {
+                input = input.Substring(colonIndex + 1);
+            }
 
             // Проверяем, не является ли это фото (file_id)
-            if (data.CurrentStep == "image" && !string.IsNullOrWhiteSpace(input) && input.StartsWith("photo:"))
+            if (data.CurrentStep == "image" && !string.IsNullOrWhiteSpace(input))
             {
-                data.ImageFileId = input.Substring(6);
+                data.ImageFileId = input.Trim();
                 MoveToNextStep(data);
                 await SendStepMessageAsync(ctx, data);
                 return true;
@@ -286,14 +292,54 @@ namespace FetchFood.Commands.Menu.Positions
         /// </summary>
         private async Task SendStepMessageAsync(MenuCommandContext ctx, CreationData data)
         {
-            var (text, keyboard) = await BuildStepContentAsync(ctx, data);
-            await SendMessageAsync(ctx, text, keyboard);
+            // Шаги с текстовым вводом используют ForceReply
+            var textInputSteps = new[] { "name", "price", "ingredients", "description", "image" };
+
+            if (textInputSteps.Contains(data.CurrentStep))
+            {
+                // Сначала отправляем статус с кнопками
+                var (statusText, buttons) = await BuildStatusWithButtonsAsync(ctx, data);
+                if (!string.IsNullOrEmpty(statusText))
+                {
+                    await SendMessageAsync(ctx, statusText, buttons);
+                }
+
+                // Затем отправляем промпт с ForceReply
+                var promptText = BuildForceReplyPrompt(data);
+                await SendMessageAsync(ctx, promptText, new ForceReplyMarkup { Selective = true });
+            }
+            else
+            {
+                // Шаги с кнопками (category, confirm)
+                var (text, keyboard) = await BuildButtonStepContentAsync(ctx, data);
+                await SendMessageAsync(ctx, text, keyboard);
+            }
         }
 
         /// <summary>
-        /// Построить содержимое сообщения для текущего шага.
+        /// Построить текст промпта с командой для ForceReply.
         /// </summary>
-        private async Task<(string text, InlineKeyboardMarkup keyboard)> BuildStepContentAsync(MenuCommandContext ctx, CreationData data)
+        private static string BuildForceReplyPrompt(CreationData data)
+        {
+            var step = data.CurrentStep;
+            var prompt = step switch
+            {
+                "name" => "Введите название:",
+                "price" => "Введите цену (в рублях):",
+                "ingredients" => "Введите состав:",
+                "description" => "Введите описание:",
+                "image" => "Отправьте фото:",
+                _ => "Введите значение:"
+            };
+
+            // Команда в тексте для маршрутизации ответа
+            return $"{prompt}\n{BotCommands.MENU}:{BotCommands.ADD_POSITION}:{step}:";
+        }
+
+        /// <summary>
+        /// Построить статус и кнопки для шагов с текстовым вводом.
+        /// </summary>
+        private async Task<(string text, InlineKeyboardMarkup keyboard)> BuildStatusWithButtonsAsync(MenuCommandContext ctx, CreationData data)
         {
             var sb = new StringBuilder();
             var rows = new List<InlineKeyboardButton[]>();
@@ -303,36 +349,14 @@ namespace FetchFood.Commands.Menu.Positions
                 case "name":
                     sb.AppendLine("📝 Добавление новой позиции");
                     sb.AppendLine();
-                    sb.AppendLine("Шаг 1/6: Введите название:");
+                    sb.AppendLine("Шаг 1/6: Введите название");
                     rows.Add(new[] { CancelButton() });
                     break;
 
                 case "price":
                     sb.AppendLine($"✅ Название: {data.Name}");
                     sb.AppendLine();
-                    sb.AppendLine("Шаг 2/6: Введите цену (в рублях):");
-                    rows.Add(new[] { BackButton(), CancelButton() });
-                    break;
-
-                case "category":
-                    sb.AppendLine($"✅ Название: {data.Name}");
-                    sb.AppendLine($"✅ Цена: {data.Price:0.##} ₽");
-                    sb.AppendLine();
-                    sb.AppendLine("Шаг 3/6: Выберите категорию:");
-
-                    // Кнопка "Без категории"
-                    rows.Add(new[] { InlineKeyboardButton.WithCallbackData("❌ Без категории", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:cat:0") });
-
-                    // Категории
-                    var categories = await ctx.CategoryService.GetAllCategoriesAsync(ctx.CancellationToken);
-                    var catButtons = categories
-                        .Select(c => InlineKeyboardButton.WithCallbackData(
-                            $"📂 {c.Name}",
-                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:cat:{c.PositionCategoryId}"))
-                        .Chunk(2)
-                        .Select(chunk => chunk.ToArray());
-                    rows.AddRange(catButtons);
-
+                    sb.AppendLine("Шаг 2/6: Введите цену (в рублях)");
                     rows.Add(new[] { BackButton(), CancelButton() });
                     break;
 
@@ -341,7 +365,7 @@ namespace FetchFood.Commands.Menu.Positions
                     sb.AppendLine($"✅ Цена: {data.Price:0.##} ₽");
                     sb.AppendLine($"✅ Категория: {data.CategoryName ?? "без категории"}");
                     sb.AppendLine();
-                    sb.AppendLine("Шаг 4/6: Введите состав (или пропустите):");
+                    sb.AppendLine("Шаг 4/6: Введите состав (или пропустите)");
                     rows.Add(new[] { SkipButton(), BackButton(), CancelButton() });
                     break;
 
@@ -352,7 +376,7 @@ namespace FetchFood.Commands.Menu.Positions
                     if (!string.IsNullOrWhiteSpace(data.Ingredients))
                         sb.AppendLine($"✅ Состав: {data.Ingredients}");
                     sb.AppendLine();
-                    sb.AppendLine("Шаг 5/6: Введите описание (или пропустите):");
+                    sb.AppendLine("Шаг 5/6: Введите описание (или пропустите)");
                     rows.Add(new[] { SkipButton(), BackButton(), CancelButton() });
                     break;
 
@@ -365,8 +389,42 @@ namespace FetchFood.Commands.Menu.Positions
                     if (!string.IsNullOrWhiteSpace(data.Description))
                         sb.AppendLine($"✅ Описание: {data.Description}");
                     sb.AppendLine();
-                    sb.AppendLine("Шаг 6/6: Отправьте фото (или пропустите):");
+                    sb.AppendLine("Шаг 6/6: Отправьте фото (или пропустите)");
                     rows.Add(new[] { SkipButton(), BackButton(), CancelButton() });
+                    break;
+            }
+
+            return (sb.ToString(), new InlineKeyboardMarkup(rows));
+        }
+
+        /// <summary>
+        /// Построить содержимое для шагов с кнопками.
+        /// </summary>
+        private async Task<(string text, InlineKeyboardMarkup keyboard)> BuildButtonStepContentAsync(MenuCommandContext ctx, CreationData data)
+        {
+            var sb = new StringBuilder();
+            var rows = new List<InlineKeyboardButton[]>();
+
+            switch (data.CurrentStep)
+            {
+                case "category":
+                    sb.AppendLine($"✅ Название: {data.Name}");
+                    sb.AppendLine($"✅ Цена: {data.Price:0.##} ₽");
+                    sb.AppendLine();
+                    sb.AppendLine("Шаг 3/6: Выберите категорию:");
+
+                    rows.Add(new[] { InlineKeyboardButton.WithCallbackData("❌ Без категории", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:cat:0") });
+
+                    var categories = await ctx.CategoryService.GetAllCategoriesAsync(ctx.CancellationToken);
+                    var catButtons = categories
+                        .Select(c => InlineKeyboardButton.WithCallbackData(
+                            $"📂 {c.Name}",
+                            $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:cat:{c.PositionCategoryId}"))
+                        .Chunk(2)
+                        .Select(chunk => chunk.ToArray());
+                    rows.AddRange(catButtons);
+
+                    rows.Add(new[] { BackButton(), CancelButton() });
                     break;
 
                 case "confirm":
