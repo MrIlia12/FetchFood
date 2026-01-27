@@ -42,14 +42,21 @@ namespace FetchFood.Services
                     return;
                 }
 
-                var isAdministrator = await _authorizationService.IsUserAdministratorAsync(userId);
-                if (isAdministrator)
+                // Проверяем роль пользователя
+                var userRole = await _authorizationService.GetUserRoleAsync(userId);
+                
+                switch (userRole)
                 {
-                    await GetAdministratorConsoleAsync(message.Chat.Id);
-                    return;
+                    case DataAccess.Entities.Models.UserRole.Administrator:
+                        await GetAdministratorConsoleAsync(message.Chat.Id);
+                        break;
+                    case DataAccess.Entities.Models.UserRole.Courier:
+                        await GetCourierConsoleAsync(message.Chat.Id);
+                        break;
+                    default:
+                        await ShowMenuButton(message.Chat.Id);
+                        break;
                 }
-
-                await ShowMenuButton(message.Chat.Id);
             }
             catch (Exception ex)
             {
@@ -121,6 +128,25 @@ namespace FetchFood.Services
                 chatId: chatId,
                 text: "Ваша роль - администратор.",
                 replyMarkup: requestContactKeyboard);
+        }
+
+        /// <summary>
+        /// Консоль курьера с кнопкой для просмотра заказов
+        /// </summary>
+        private async Task GetCourierConsoleAsync(long chatId)
+        {
+            var courierKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📦 Мои заказы", Commands.CourierCommands.ViewOrders.Command)
+                }
+            });
+
+            await _bot.SendMessage(
+                chatId: chatId,
+                text: "🚗 Добро пожаловать, курьер!\n\nНажмите кнопку ниже, чтобы посмотреть активные заказы для доставки.",
+                replyMarkup: courierKeyboard);
         }
 
         private async Task HandleContactMessage(Message message)
