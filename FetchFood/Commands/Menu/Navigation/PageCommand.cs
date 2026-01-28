@@ -51,15 +51,16 @@ namespace FetchFood.Commands.Menu.Navigation
             if (page < totalPages - 1)
                 navRow.Add(InlineKeyboardButton.WithCallbackData("Далее ➡️", $"{BotCommands.MENU}:{BotCommands.PAGE}:{page + 1}"));
 
-            var categoryRow = new[]
+            var bottomRow = new[]
             {
-                InlineKeyboardButton.WithCallbackData("📂 Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}")
+                InlineKeyboardButton.WithCallbackData("📂 Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}"),
+                InlineKeyboardButton.WithCallbackData("🛒 Корзина", BotCommands.CART_SHOW)
             };
 
             var rows = new List<InlineKeyboardButton[]>();
             rows.AddRange(itemButtons);
             if (navRow.Count > 0) rows.Add(navRow.ToArray());
-            rows.Add(categoryRow);
+            rows.Add(bottomRow);
 
             // Показываем кнопку добавления только админам
             var isAdmin = await ctx.IsAdminAsync();
