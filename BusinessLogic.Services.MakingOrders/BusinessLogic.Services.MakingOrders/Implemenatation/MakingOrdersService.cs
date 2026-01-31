@@ -1,4 +1,5 @@
 ﻿using BusinessLogic.Services.Authorization.Abstractions;
+using BusinessLogic.Services.Cart.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.States;
 using DataAccess.Entities;
@@ -27,6 +28,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         private readonly IOrdersRepository _ordersRepository;
         private readonly IOrdersDataRepository _ordersDataRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ICartService _cartService;
         private Dictionary<string, OrderState> _states;
 
         public MakingOrdersService(
@@ -34,12 +36,14 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
             IOrdersDataRepository ordersDataRepository,
             IAuthorizationService authorizationService,
             IUserRepository userRepository,
+            ICartService cartService,
             ILogger<MakingOrdersService> logger)
         {
             _logger = logger;
             _ordersRepository = ordersRepository;
             _ordersDataRepository = ordersDataRepository;
             _userRepository = userRepository;
+            _cartService = cartService;
             _states = new Dictionary<string, OrderState>
             {
                 { typeof(WaitingForAddressState).Name, new WaitingForAddressState(this) },
@@ -53,12 +57,28 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         {
             try
             {
+                // Получаем корзину пользователя
+                var cart = await _cartService.GetCartAsync(userId);
+
+                // Проверяем, что корзина не пустая
+                if (cart == null || cart.CartItems == null || !cart.CartItems.Any())
+                {
+                    _logger.LogWarning($"Попытка начать оформление заказа с пустой корзиной для пользователя {userId}");
+                    return false;
+                }
+
+                // Проверяем, что сумма заказа больше 0
+                if (cart.Price <= 0)
+                {
+                    _logger.LogWarning($"Попытка начать оформление заказа с нулевой суммой для пользователя {userId}");
+                    return false;
+                }
+
                 // Создаем временные данные для заказа
                 UserOrderData orderData = new UserOrderData
                 {
                     UserId = userId,
                     CurrentState = typeof(WaitingForAddressState).Name,
-                    CartItems = new List<CartItem>() // TODO: Здесь должна быть логика получения корзины
                 };
 
                 // Сохраняем временные данные в репозиторий временных заказов
@@ -167,13 +187,16 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     return false;
                 }
 
+                // Очищаем корзину пользователя после сохранения заказа
+                await _cartService.ClearCartAsync(userId);
+
                 Orders order = new Orders
                 {
                     IdUser = userId,
                     Address = orderData.Address,
                     PhoneNumber = orderData.PhoneNumber,
                     Status = "Created",
-                    Price = (int)orderData.Price,
+                    Price = orderData.Price,
                     DateOrder = DateTime.UtcNow,
                     Comment = orderData.Comment
                 };
@@ -183,6 +206,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 // Очищаем временные данные
                 await _ordersDataRepository.DeleteOrderDataAsync(userId);
+                
 
                 _logger.LogInformation($"Заказ №{createdOrder.OrderId} успешно создан для пользователя {userId}");
                 return true;
@@ -233,8 +257,10 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
             orderData.PhoneNumber = user.PhoneNumber;
             orderData.Name = user.Name;
-           // orderData.CurrentState = typeof(WaitingForConfirmationState).Name;
-           // await SaveOrderDataAsync(orderData);
+            // Получение данных корзины пользователя
+            var cart = await _cartService.GetCartAsync(userId);
+            orderData.Price = cart.Price;
+            orderData.CartItems = cart.CartItems;
 
 
             return new OrderProcessingResult

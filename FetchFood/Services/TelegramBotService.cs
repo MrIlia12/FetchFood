@@ -66,8 +66,6 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
-
-
             BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
                 ? await GetHandlerAsync(update, update.CallbackQuery.Data)
                 : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
@@ -75,6 +73,7 @@ namespace FetchFood.Services
                     : await HandleReplyMessage(update);
 
             handler?.Invoke();
+            return;
         }
 
         private async Task<BotCommandHandler> GetHandlerAsync(Update update, string command)
@@ -102,19 +101,24 @@ namespace FetchFood.Services
 
         private async Task<BotCommandHandler> HandleReplyMessage(Update update)
         {
-            // Проверка на null 
-            if (update.Message?.ReplyToMessage?.Text == null)
-            {
-                return null;
-            }
+            // Заплатка эксепшена
+            string? replyMessage;
+            if (update.Message.ReplyToMessage == null)
+                replyMessage = "";
+            else
+                replyMessage = update.Message.ReplyToMessage.Text;
 
-            var replyMessage = update.Message.ReplyToMessage.Text;
+            if (string.IsNullOrEmpty(replyMessage) && update.Message != null)
+            {
+                // Направляем все текстовые сообщения, которые не START и не Contact, в обработчик оформления заказа
+                // потому что в сервисе оформления заказа есть несколько обменов сообщениями с пользователем, помимо кнопок!!!
+                return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService);
+            }
 
             BotCommandHandler handler = replyMessage switch
             {
                 BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService),
                 BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                _ => null
             };
 
             return handler;
