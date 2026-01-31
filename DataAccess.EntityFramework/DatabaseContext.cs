@@ -36,6 +36,13 @@ namespace DataAccess.EntityFramework
                 .HasPrincipalKey(u => u.TelegramUserId) // Ссылаемся на TelegramUserId
                 .OnDelete(DeleteBehavior.Restrict);     // Запрещает удаление пользователя, если у него есть заказы
 
+            // Настройка связи Position -> PositionCategory
+            modelBuilder.Entity<Position>()
+                .HasOne(p => p.Category)
+                .WithMany()
+                .HasForeignKey(p => p.PositionCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);      // При удалении категории позиция остается, но категория становится null
+
             // Настройка связи User -> CouriersOrders (пользователь как курьер)
             //modelBuilder.Entity<Orders>()
             //    .HasOne(o => o.Courier)

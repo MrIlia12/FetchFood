@@ -1,4 +1,4 @@
-﻿using BusinessLogic.Services.Administration.Abstraction;
+using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
@@ -28,16 +28,26 @@ namespace FetchFood.Services
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
-        private readonly ICartService _cartService;
         private readonly ICourierService _courierService;
+        private readonly ICartService _cartService;
+        private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService, ICourierService courierService)
+        public TelegramBotService(
+            IAuthorizationService authorizationService,
+            ICartService cartService,
+            IAdministrationService administrationService,
+            IMenuService menuService,
+            IMakingOrdersService makingOrdersService,
+            ICourierService courierService,
+            ICategoryService categoryService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
+            _categoryService = categoryService;
+            _courierService = courierService,
             _courierService = courierService;
         }
 
@@ -86,7 +96,7 @@ namespace FetchFood.Services
             {
                 commandPrefix = command.Split(CommandsBase.Separator)[0];
             }
-            catch 
+            catch
             {
                 throw new ArgumentException("Неверный формат команды.");
             }
@@ -94,7 +104,7 @@ namespace FetchFood.Services
             BotCommandHandler handler = commandPrefix switch
             {
                 MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService),
+                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
                 AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
                 BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService),
                 CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService)
@@ -103,29 +113,36 @@ namespace FetchFood.Services
             return handler;
         }
 
-        private async Task<BotCommandHandler> HandleReplyMessage(Update update)
+        private Task<BotCommandHandler?> HandleReplyMessage(Update update)
         {
-            // Заплатка эксепшена
-            string? replyMessage;
-            if (update.Message.ReplyToMessage == null)
-                replyMessage = "";
-            else
-                replyMessage = update.Message.ReplyToMessage.Text;
+            var chatId = update.Message?.Chat.Id ?? 0;
 
-            if (string.IsNullOrEmpty(replyMessage) && update.Message != null)
+            // Проверяем есть ли сохранённая команда для меню
+            if (BotMenuHandler.HasPendingCommand(chatId))
             {
-                // Направляем все текстовые сообщения, которые не START и не Contact, в обработчик оформления заказа
-                // потому что в сервисе оформления заказа есть несколько обменов сообщениями с пользователем, помимо кнопок!!!
-                return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService);
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
             }
 
-            BotCommandHandler handler = replyMessage switch
-            {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService),
-                BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-            };
+            // Если нет reply - вернуть null
+            if (update.Message?.ReplyToMessage?.Text is not { } replyMessage)
+                return Task.FromResult<BotCommandHandler?>(null);
 
-            return handler;
+            // Проверяем по префиксу команды в тексте промпта
+            if (replyMessage.Contains($"{MenuCommand.MENU}:"))
+            {
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
+            }
+
+            if (replyMessage.Contains($"{MakingOrdersCommand.ORDER}:"))
+            {
+                return Task.FromResult<BotCommandHandler?>(
+                    new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService));
+            }
+
+            // Неизвестный reply - игнорируем
+            return Task.FromResult<BotCommandHandler?>(null);
         }
 
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)
@@ -135,4 +152,3 @@ namespace FetchFood.Services
         }
     }
 }
-
