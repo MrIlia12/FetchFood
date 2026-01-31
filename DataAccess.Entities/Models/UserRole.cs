@@ -11,5 +11,7 @@ namespace DataAccess.Entities.Models
         Administrator,
 
         User,
+
+        Courier,
     }
 }

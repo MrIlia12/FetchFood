@@ -4,6 +4,7 @@ using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.Menu.Abstractions;
 using BusinessLogic.Services.Cart.Abstractions;
+using BusinessLogic.Services.Courier.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
@@ -28,14 +29,16 @@ namespace FetchFood.Services
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
         private readonly ICartService _cartService;
+        private readonly ICourierService _courierService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService, ICourierService courierService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
+            _courierService = courierService;
         }
 
         public async Task StartAsync(string token)
@@ -93,7 +96,8 @@ namespace FetchFood.Services
                 MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
                 MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService),
                 AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
-                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService)
+                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService),
+                CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService)
             };
 
             return handler;
