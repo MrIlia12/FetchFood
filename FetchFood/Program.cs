@@ -16,6 +16,8 @@ using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.Implemenatation;
 using BusinessLogic.Services.Cart.Abstractions;
 using BusinessLogic.Services.Cart.Implementation;
+using BusinessLogic.Services.Courier.Abstractions;
+using BusinessLogic.Services.Courier.Implementation;
 
 public static class Program
 {
@@ -76,7 +78,8 @@ public static class Program
         .AddTransient<ICartService, CartService>()
         .AddTransient<IMenuService, MenuService>()
         .AddTransient<BusinessLogic.Services.Menu.Abstractions.ICategoryService, BusinessLogic.Services.Menu.Implementation.CategoryService>()
-        .AddTransient<IMakingOrdersService, MakingOrdersService>();
+        .AddTransient<IMakingOrdersService, MakingOrdersService>()
+        .AddTransient<ICourierService, CourierService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)

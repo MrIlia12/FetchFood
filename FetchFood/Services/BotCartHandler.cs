@@ -21,7 +21,8 @@ namespace FetchFood.Services
         private readonly ICartService _cartService;
 
         // Отслеживает, какого ответа бот ждет от пользователя
-        private readonly ConcurrentDictionary<long, string> _userState = new();
+        // Статический словарь, сохраняет состояние между всеми экземплярами обработчика
+        private static readonly ConcurrentDictionary<long, string> _userState = new();
 
         // Внедрение зависимости бизнес-логики 
         public BotCartHandler(Update update, ITelegramBotClient botClient, ICartService cartService) : base(update, botClient)
@@ -64,7 +65,7 @@ namespace FetchFood.Services
                 new[]
                 {
                     // callback_data - это то, что бот получит при нажатии
-                    InlineKeyboardButton.WithCallbackData(BotCommands.SHOWCART, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_SHOW)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.SHOWCART, CartCommand.ShowCart.Command)
                 },
                 new[]
                 {
@@ -73,7 +74,7 @@ namespace FetchFood.Services
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotCommands.CLEARCART, BotCommands.CART + CommandsBase.Separator + BotCommands.CART_CLEAR)
+                    InlineKeyboardButton.WithCallbackData(BotCommands.CLEARCART, CartCommand.ClearCart.Command)
                 }
             });
         }
@@ -91,40 +92,31 @@ namespace FetchFood.Services
                 queryData = query.Data.Split(' ')[0];
             }
                 // Определяем, какая кнопка была нажата, по ее callback_data
-                switch (queryData)
-            {
-                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_SHOW:
+                // Определяем, какая кнопка была нажата, по ее callback_data
+                if (queryData == CartCommand.ShowCart.Command)
+                {
                     await ShowCartAsync(this._bot, userId, ct);
-                    break;
-
-                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_ADD:
+                }
+                else if (queryData == CartCommand.AddItem.Command)
+                {
                     // Лия (2025-12-13): если команда пришла с аргументами, добавляем позицию в корзину сразу.
                     if (query.Data.Contains(' '))
                     {
                         string[] queryData_splitted = query.Data.Split(' ');
-                        if (queryData_splitted.Length < 3)
+                        if (queryData_splitted.Length >= 3 &&
+                            int.TryParse(queryData_splitted[1], out int posNum) &&
+                            int.TryParse(queryData_splitted[2], out int posQuantity))
                         {
-                            break;
-                        }
-                        int posNum;
-                        if (!int.TryParse(queryData_splitted[1], out posNum))
-                        {
-                            break;
-                        }
-                        int posQuantity;
-                        if (!int.TryParse(queryData_splitted[2], out posQuantity))
-                        {
-                            break;
-                        }
-                        // если все проверки пройдены, засылаем команду на добавление позиции.
-                        await _cartService.AddItemToCartAsync(userId, posNum, posQuantity);
+                            // если все проверки пройдены, засылаем команду на добавление позиции.
+                            await _cartService.AddItemToCartAsync(userId, posNum, posQuantity);
 
-                        await this._bot.SendMessage(
-                            chatId: userId,
-                            text: $"✅ Товар добавлен в корзину.",
-                            replyMarkup: GetCartInlineKeyboard(), // Показываем меню
-                            cancellationToken: ct
-                        );
+                            await this._bot.SendMessage(
+                                chatId: userId,
+                                text: $"✅ Товар добавлен в корзину.",
+                                replyMarkup: GetCartInlineKeyboard(), // Показываем меню
+                                cancellationToken: ct
+                            );
+                        }
                     }
                     else
                     {
@@ -137,9 +129,9 @@ namespace FetchFood.Services
                             cancellationToken: ct
                         );
                     }
-                    break;
-
-                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_REMOVE:
+                }
+                else if (queryData == CartCommand.RemoveItem.Command)
+                {
                     // Устанавливаем состояние "ждем ID"
                     _userState[userId] = "awaiting_item_to_remove";
                     await this._bot.SendMessage(
@@ -147,10 +139,10 @@ namespace FetchFood.Services
                         text: "Введите ID товара, который хотите удалить.",
                         cancellationToken: ct
                     );
-                    break;
-
-                // --- ОЧИСТИТЬ КОРЗИНУ ---
-                case BotCommands.CART + CommandsBase.Separator + BotCommands.CART_CLEAR:
+                }
+                else if (queryData == CartCommand.ClearCart.Command)
+                {
+                    // --- ОЧИСТИТЬ КОРЗИНУ ---
                     await _cartService.ClearCartAsync(userId); // Вызов бизнес-логики
                     await this._bot.SendMessage(
                         chatId: userId,
@@ -158,8 +150,7 @@ namespace FetchFood.Services
                         replyMarkup: GetCartInlineKeyboard(), // Снова показываем меню
                         cancellationToken: ct
                     );
-                    break;
-            }
+                }
 
             // Отвечаем на Callback, чтобы убрать "часики" (загрузку) на кнопке
             try

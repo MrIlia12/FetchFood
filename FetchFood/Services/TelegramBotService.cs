@@ -4,6 +4,7 @@ using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.Menu.Abstractions;
 using BusinessLogic.Services.Cart.Abstractions;
+using BusinessLogic.Services.Courier.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
@@ -27,6 +28,7 @@ namespace FetchFood.Services
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
+        private readonly ICourierService _courierService;
         private readonly ICartService _cartService;
         private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
 
@@ -36,6 +38,7 @@ namespace FetchFood.Services
             IAdministrationService administrationService,
             IMenuService menuService,
             IMakingOrdersService makingOrdersService,
+            ICourierService courierService,
             ICategoryService categoryService)
         {
             _authorizationService = authorizationService;
@@ -44,6 +47,8 @@ namespace FetchFood.Services
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
             _categoryService = categoryService;
+            _courierService = courierService,
+            _courierService = courierService;
         }
 
         public async Task StartAsync(string token)
@@ -74,25 +79,14 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
-            BotCommandHandler? handler = null;
-
-            if (update.Type is UpdateType.CallbackQuery)
-            {
-                handler = await GetHandlerAsync(update, update.CallbackQuery!.Data!);
-            }
-            else if (update.Message is { } message)
-            {
-                if (message.Text == BotCommands.START || message.Type is MessageType.Contact)
-                {
-                    handler = new BotAuthorizationHandler(update, this._bot, this._authorizationService);
-                }
-                else
-                {
-                    handler = await HandleReplyMessage(update);
-                }
-            }
+            BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
+                ? await GetHandlerAsync(update, update.CallbackQuery.Data)
+                : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
+                    ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
+                    : await HandleReplyMessage(update);
 
             handler?.Invoke();
+            return;
         }
 
         private async Task<BotCommandHandler> GetHandlerAsync(Update update, string command)
@@ -112,7 +106,8 @@ namespace FetchFood.Services
                 MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
                 MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
                 AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
-                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService)
+                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService),
+                CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService)
             };
 
             return handler;
