@@ -131,26 +131,6 @@ namespace FetchFood.Services
             }
         }
 
-        private async Task<BotCommandHandler> HandleReplyMessage(Update update)
-        {
-            // Проверка на null 
-            if (update.Message?.ReplyToMessage?.Text == null)
-            {
-                return null;
-            }
-
-            var replyMessage = update.Message.ReplyToMessage.Text;
-
-            BotCommandHandler handler = replyMessage switch
-            {
-                BotCommands.MENU1 => new BotMenuHandler(update, this._bot, this._menuService, this._usersState),
-                BotCommands.ORDER1 => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState),
-                _ => null
-            };
-
-            return handler;
-        }
-
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)
         {
             Console.WriteLine($"[{LogMessages.ERROR}]: {ex.Message}");
