@@ -33,7 +33,7 @@ namespace FetchFood.Services
         private readonly ICourierService _courierService;
         private readonly ICartService _cartService;
         private readonly ConcurrentDictionary<long, UserState> _usersState = new();
-        private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
+        private readonly ICategoryService _categoryService;
 
         public TelegramBotService(
             IAuthorizationService authorizationService,
@@ -50,7 +50,6 @@ namespace FetchFood.Services
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
             _categoryService = categoryService;
-            _courierService = courierService,
             _courierService = courierService;
         }
 
@@ -123,7 +122,7 @@ namespace FetchFood.Services
 
                     handler = commandPrefix switch
                     {
-                        MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._usersState),
+                        MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService, this._usersState),
                         AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService, this._usersState),
                         BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService, this._usersState),
                     };

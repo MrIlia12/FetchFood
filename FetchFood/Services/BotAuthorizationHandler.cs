@@ -59,6 +59,9 @@ namespace FetchFood.Services
                         await ShowMenuButton(message.Chat.Id);
                         break;
                 }
+
+                var state = this._userState[userId];
+                this._userState[userId].State.ToNextState(state);
             }
             catch (Exception ex)
             {

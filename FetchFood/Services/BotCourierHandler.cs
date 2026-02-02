@@ -1,6 +1,8 @@
 using BusinessLogic.Services.Courier.Abstractions;
 using DataAccess.Entities;
 using FetchFood.Commands;
+using FetchFood.States;
+using System.Collections.Concurrent;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -14,14 +16,15 @@ namespace FetchFood.Services
     class BotCourierHandler : BotCommandHandler
     {
         private readonly ICourierService _courierService;
+        private readonly ConcurrentDictionary<long, UserState> _userState;
 
-        public BotCourierHandler(Update update, ITelegramBotClient botClient, ICourierService courierService) 
-            : base(update, botClient)
+        public BotCourierHandler(Update update, ITelegramBotClient botClient, ICourierService courierService, ConcurrentDictionary<long, UserState> userState) 
+            : base(update, botClient, userState)
         {
             _courierService = courierService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
