@@ -1,5 +1,6 @@
 ﻿using DataAccess.Entities.Models;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DataAccess.Entities
 {
@@ -21,5 +22,12 @@ namespace DataAccess.Entities
         public string? Description { get; set; }
 
         public string? Image { get; set; } // возможно, лучше использовать массив байт..
+
+        // Связь с категорией
+        [ForeignKey("Category")]
+        public int? PositionCategoryId { get; set; }
+        
+        // Навигационное свойство
+        public virtual PositionCategory? Category { get; set; }
     }
 }

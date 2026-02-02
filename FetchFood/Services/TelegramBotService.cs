@@ -1,9 +1,10 @@
-﻿using BusinessLogic.Services.Administration.Abstraction;
+using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
 using BusinessLogic.Services.Authorization.Abstractions;
 using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.Menu.Abstractions;
 using BusinessLogic.Services.Cart.Abstractions;
+using BusinessLogic.Services.Courier.Abstractions;
 using DataAccess.Entities.Models;
 using FetchFood.Abstractions;
 using FetchFood.Commands;
@@ -29,16 +30,28 @@ namespace FetchFood.Services
         private readonly IMenuService _menuService;
         private readonly IAdministrationService _administrationService;
         private readonly IMakingOrdersService _makingOrdersService;
+        private readonly ICourierService _courierService;
         private readonly ICartService _cartService;
         private readonly ConcurrentDictionary<long, UserState> _usersState = new();
+        private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
 
-        public TelegramBotService(IAuthorizationService authorizationService, ICartService cartService, IAdministrationService administrationService, IMenuService menuService, IMakingOrdersService makingOrdersService)
+        public TelegramBotService(
+            IAuthorizationService authorizationService,
+            ICartService cartService,
+            IAdministrationService administrationService,
+            IMenuService menuService,
+            IMakingOrdersService makingOrdersService,
+            ICourierService courierService,
+            ICategoryService categoryService)
         {
             _authorizationService = authorizationService;
             _administrationService = administrationService;
             _cartService = cartService;
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
+            _categoryService = categoryService;
+            _courierService = courierService,
+            _courierService = courierService;
         }
 
         public async Task StartAsync(string token)
@@ -78,6 +91,7 @@ namespace FetchFood.Services
             BotCommandHandler? handler = await GetHandlerAsync(update, userState);
 
             handler?.Invoke();
+            return;
         }
 
         private async Task<BotCommandHandler> GetHandlerAsync(Update update, UserState userState)
@@ -138,4 +152,3 @@ namespace FetchFood.Services
         }
     }
 }
-

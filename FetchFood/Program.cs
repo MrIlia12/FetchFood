@@ -16,6 +16,8 @@ using BusinessLogic.Services.MakingOrders.Abstractions;
 using BusinessLogic.Services.MakingOrders.Implemenatation;
 using BusinessLogic.Services.Cart.Abstractions;
 using BusinessLogic.Services.Cart.Implementation;
+using BusinessLogic.Services.Courier.Abstractions;
+using BusinessLogic.Services.Courier.Implementation;
 
 public static class Program
 {
@@ -75,7 +77,9 @@ public static class Program
         .AddTransient<IAdministrationService, AdministrationService>()
         .AddTransient<ICartService, CartService>()
         .AddTransient<IMenuService, MenuService>()
-        .AddTransient<IMakingOrdersService, MakingOrdersService>();
+        .AddTransient<BusinessLogic.Services.Menu.Abstractions.ICategoryService, BusinessLogic.Services.Menu.Implementation.CategoryService>()
+        .AddTransient<IMakingOrdersService, MakingOrdersService>()
+        .AddTransient<ICourierService, CourierService>();
     }
 
     private static void InstallRepositories(this IServiceCollection serviceCollection)
@@ -83,6 +87,7 @@ public static class Program
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
 			.AddTransient<IPositionRepository, PositionRepository>()
+            .AddTransient<IPositionCategoryRepository, PositionCategoryCategoryRepository>()
             .AddTransient<IOrderRepository, OrderRepository>()
             .AddTransient<IOrdersDataRepository, OrderDataRepository>()
             .AddTransient<IOrdersRepository, OrdersRepository>();

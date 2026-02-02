@@ -69,7 +69,7 @@ namespace FetchFood.Services
                     await _bot.SendMessage(
                         chatId: chatId,
                         text: "❌ Не удалось начать оформление заказа. Попробуйте позже.");
-                }               
+                }    
             }
             else
             {

@@ -50,5 +50,13 @@ namespace DataAccess.Repositories.Abstractions
         /// <param name="ct">Токен отмены (опционально)</param>
         /// <returns>Список позиций в БД, найденных по совпадению в имени</returns>
         Task<List<Position>> GetPositionsByNameAsync(string namePart, CancellationToken ct = default);
+
+        /// <summary>
+        /// Получить все позиции по категории
+        /// </summary>
+        /// <param name="categoryId">Id категории</param>
+        /// <param name="ct">Токен отмены (опционально)</param>
+        /// <returns>Список позиций в указанной категории</returns>
+        Task<List<Position>> GetPositionsByCategoryIdAsync(int categoryId, CancellationToken ct = default);
     } 
 }

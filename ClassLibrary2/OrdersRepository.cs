@@ -48,8 +48,8 @@ namespace DataAccess.Repositories.Implementations
 
             // Ищем заказ по ID и включаем связанные данные о пользователе
             return await dbContext.Orders
-                .Include(o => o.User)                            // Загружаем данные пользователя вместе с заказом
-                .FirstOrDefaultAsync(x => x.IdUser == orderId);  // Находим первый заказ с указанным ID или null
+                .Include(o => o.User)                             // Загружаем данные пользователя вместе с заказом
+                .FirstOrDefaultAsync(x => x.OrderId == orderId);  // Находим первый заказ с указанным ID или null
         }
 
         // Получение текущего (последнего) заказа пользователя
@@ -110,6 +110,21 @@ namespace DataAccess.Repositories.Implementations
 
             return await dbContext.Orders
                 .Where(o => o.IdUser == userId)           // Фильтруем по пользователю
+                .OrderByDescending(o => o.DateOrder)      // Сортируем по дате (сначала новые)
+                .ToListAsync();                           // Преобразуем в список
+        }
+
+        // Получение заказов по статусу
+        public async Task<List<Orders>> GetOrdersByStatusAsync(string status)
+        {
+            // Каждый раз создаем НОВУЮ область видимости для изоляции работы с БД            
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            // Каждый раз получаем НОВЫЙ DbContext бд из контейнера зависимостей
+            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            return await dbContext.Orders
+                .Include(o => o.User)                     // Включаем данные пользователя
+                .Where(o => o.Status == status)           // Фильтруем по статусу
                 .OrderByDescending(o => o.DateOrder)      // Сортируем по дате (сначала новые)
                 .ToListAsync();                           // Преобразуем в список
         }

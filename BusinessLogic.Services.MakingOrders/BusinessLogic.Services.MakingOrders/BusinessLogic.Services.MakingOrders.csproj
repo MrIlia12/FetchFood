@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\BusinessLogic.Services.Authorization\BusinessLogic.Services.Authorization.csproj" />
+	  <ProjectReference Include="..\..\BusinessLogic.Services.Cart\BusinessLogic.Services.Cart.csproj" />
 	  <ProjectReference Include="..\..\ClassLibrary1\DataAccess.Repositories.Abstractions.csproj" />
 	  <ProjectReference Include="..\..\ClassLibrary2\DataAccess.Repositories.Implementations.csproj" />
 	  <ProjectReference Include="..\..\DataAccess.Entities\DataAccess.Entities.csproj" />

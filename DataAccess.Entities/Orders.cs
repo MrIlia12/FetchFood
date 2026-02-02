@@ -31,7 +31,7 @@ namespace DataAccess.Entities
         public string Address { get; set; }
 
         [Required]
-        public int Price { get; set; }
+        public decimal Price { get; set; }
 
         [Required]
         public DateTime DateOrder { get; set; }

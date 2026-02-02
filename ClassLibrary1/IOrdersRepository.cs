@@ -45,6 +45,12 @@ namespace DataAccess.Repositories.Abstractions
         /// </summary>
         /// <param name="userId">ID пользователя в Telegram</param>
         Task<List<Orders>> GetUserOrdersAsync(long userId);
+
+        /// <summary>
+        /// Получает заказы по статусу
+        /// </summary>
+        /// <param name="status">Статус заказа</param>
+        Task<List<Orders>> GetOrdersByStatusAsync(string status);
     }
 
     /// <summary>

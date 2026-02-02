@@ -16,6 +16,26 @@ namespace BusinessLogic.Services.Menu.Implementation
             _logger = logger;
             _positionRepository = positionRepository;
         }
+
+        public async Task<List<Position>> GetActivePositionsByCategoryAsync(int? categoryId, CancellationToken ct = default)
+        {
+            List<Position> positions;
+            if (categoryId.HasValue)
+            {
+                positions = await _positionRepository.GetPositionsByCategoryIdAsync(categoryId.Value, ct);
+            }
+            else
+            {
+                // Если categoryId null, получаем все позиции и фильтруем те, у которых категория null
+                positions = await _positionRepository.GetAllPositionsAsync(ct);
+                positions = positions.Where(p => p.PositionCategoryId == null).ToList();
+            }
+            
+            return positions
+                .Where(p => p.Status == PositionStatus.Active)
+                .OrderBy(p => p.Name)
+                .ToList();
+        }
         public async Task<List<Position>> GetActivePositionsAsync(CancellationToken ct = default)
         {
             List<Position> all = await _positionRepository.GetAllPositionsAsync(ct);
@@ -66,6 +86,12 @@ namespace BusinessLogic.Services.Menu.Implementation
         public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
         {
             return await _positionRepository.RemovePositionByIdAsync(id, ct);
+        }
+
+        public async Task<bool> UpdateAsync(Position position, CancellationToken ct = default)
+        {
+            if (position is null) throw new ArgumentNullException(nameof(position));
+            return await _positionRepository.UpdatePositionAsync(position, ct);
         }
     }
 }

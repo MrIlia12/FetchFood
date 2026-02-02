@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace DataAccess.Repositories.Implementations
 {
-    internal class PositionCategoryCategoryRepository : IPositionCategoryRepository
+    public class PositionCategoryCategoryRepository : IPositionCategoryRepository
     {
         private readonly IServiceScopeFactory _scopeFactory;
 

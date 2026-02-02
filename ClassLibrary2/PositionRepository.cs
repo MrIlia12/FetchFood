@@ -19,7 +19,9 @@ namespace DataAccess.Repositories.Implementations
         {
             using var scope = _scopeFactory.CreateScope();
             DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
-            Position position = await dbContext.Positions.FirstOrDefaultAsync(x => x.PositionId == positionId, ct);
+            Position position = await dbContext.Positions
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(x => x.PositionId == positionId, ct);
             return position;
         }
 
@@ -66,6 +68,7 @@ namespace DataAccess.Repositories.Implementations
                 existing.Description = position.Description;
                 existing.Ingredients = position.Ingredients;
                 existing.Image = position.Image;
+                existing.PositionCategoryId = position.PositionCategoryId;
             }
             return await dbContext.SaveChangesAsync(ct) > 0;
         }
@@ -74,7 +77,9 @@ namespace DataAccess.Repositories.Implementations
             using var scope = _scopeFactory.CreateScope();
             DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
 
-            List<Position> positions = await dbContext.Positions.ToListAsync(ct);
+            List<Position> positions = await dbContext.Positions
+                .Include(p => p.Category)
+                .ToListAsync(ct);
             return positions;
         }
         public async Task<List<Position>> GetPositionsByNameAsync(string namePart, CancellationToken ct = default)
@@ -87,8 +92,22 @@ namespace DataAccess.Repositories.Implementations
 
             string pattern = $"%{namePart}%";
             return await dbContext.Positions
+                .Include(p => p.Category)
                 .AsNoTracking()
                 .Where(p => EF.Functions.ILike(p.Name, pattern)) 
+                .OrderBy(p => p.Name)
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<Position>> GetPositionsByCategoryIdAsync(int categoryId, CancellationToken ct = default)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            return await dbContext.Positions
+                .Include(p => p.Category)
+                .AsNoTracking()
+                .Where(p => p.PositionCategoryId == categoryId)
                 .OrderBy(p => p.Name)
                 .ToListAsync(ct);
         }
