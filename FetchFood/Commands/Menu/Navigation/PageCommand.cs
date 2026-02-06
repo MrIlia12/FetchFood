@@ -60,18 +60,25 @@ namespace FetchFood.Commands.Menu.Navigation
             var rows = new List<InlineKeyboardButton[]>();
             rows.AddRange(itemButtons);
             if (navRow.Count > 0) rows.Add(navRow.ToArray());
-            rows.Add(bottomRow);
 
             // Показываем кнопку добавления только админам
             var isAdmin = await ctx.IsAdminAsync();
             if (isAdmin)
             {
+                bottomRow = new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📂 Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}"),
+                    InlineKeyboardButton.WithCallbackData("К консоли администратора", AdministrationCommands.ToHomeConsole.Command)
+                };
+
                 var actionRow = new[]
                 {
                     InlineKeyboardButton.WithCallbackData("➕ Добавить", $"{BotCommands.MENU}:{BotCommands.ADD_POSITION}:start")
                 };
                 rows.Add(actionRow);
             }
+
+            rows.Add(bottomRow);
 
             string header = $"Меню (стр. {page + 1}/{totalPages}):\nВыберите позицию, чтобы посмотреть детали.";
 

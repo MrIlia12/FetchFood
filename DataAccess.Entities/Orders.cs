@@ -19,8 +19,8 @@ namespace DataAccess.Entities
         [ForeignKey("User")]
         public long IdUser { get; set; }
 
-        //[ForeignKey("Courier")]
-        //public long? IdCourier { get; set; }
+        [ForeignKey("Courier")]
+        public long? IdCourier { get; set; }
 
         [Required]
         [MaxLength(20)]
@@ -45,7 +45,8 @@ namespace DataAccess.Entities
 
         // Навигационные свойства
         public virtual User User { get; set; }
-        //public virtual User Courier { get; set; }
+
+        public virtual Courier Courier { get; set; }
     }
 
     /// <summary>
