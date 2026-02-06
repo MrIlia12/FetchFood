@@ -88,7 +88,6 @@ public static class Program
             .AddTransient<IUserRepository, UserRepository>()
 			.AddTransient<IPositionRepository, PositionRepository>()
             .AddTransient<IPositionCategoryRepository, PositionCategoryCategoryRepository>()
-            .AddTransient<IOrderRepository, OrderRepository>()
             .AddTransient<IOrdersDataRepository, OrderDataRepository>()
             .AddTransient<IOrdersRepository, OrdersRepository>();
     }

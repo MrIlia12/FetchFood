@@ -44,12 +44,12 @@ namespace DataAccess.EntityFramework
                 .OnDelete(DeleteBehavior.SetNull);      // При удалении категории позиция остается, но категория становится null
 
             // Настройка связи User -> CouriersOrders (пользователь как курьер)
-            //modelBuilder.Entity<Orders>()
-            //    .HasOne(o => o.Courier)
-            //    .WithMany(u => u.CourierOrders)
-            //    .HasForeignKey(o => o.IdCourier)
-            //    .HasPrincipalKey(u => u.TelegramUserId)
-            //    .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Orders>()
+                .HasOne(o => o.Courier)
+                .WithMany(u => u.Orders)
+                .HasForeignKey(o => o.IdCourier)
+                .HasPrincipalKey(u => u.CourierId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Если нужно указать точное имя таблицы
             //modelBuilder.Entity<Orders>().ToTable("orders");

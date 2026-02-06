@@ -4,6 +4,9 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot;
 using FetchFood.Commands;
 using BusinessLogic.Services.Authorization.Abstractions;
+using FetchFood.States;
+using System.Collections.Concurrent;
+using DataAccess.Entities.Models;
 
 namespace FetchFood.Services
 {
@@ -17,11 +20,11 @@ namespace FetchFood.Services
         /// <summary>
         /// ctor.
         /// </summary>
-        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService) : base(update, botClient)
+        public BotAuthorizationHandler(Update update, ITelegramBotClient botClient, IAuthorizationService authorizationService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _authorizationService = authorizationService;
         }
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
@@ -47,16 +50,20 @@ namespace FetchFood.Services
                 
                 switch (userRole)
                 {
-                    case DataAccess.Entities.Models.UserRole.Administrator:
+                    case UserRole.Administrator:
                         await GetAdministratorConsoleAsync(message.Chat.Id);
+                        ////this._userState[userId] = new UserState(new AuthorizedAdministrator());
                         break;
-                    case DataAccess.Entities.Models.UserRole.Courier:
+                    case UserRole.Courier:
                         await GetCourierConsoleAsync(message.Chat.Id);
                         break;
                     default:
                         await ShowMenuButton(message.Chat.Id);
                         break;
                 }
+
+                var state = this._userState[userId];
+                this._userState[userId].State.ToNextState(state);
             }
             catch (Exception ex)
             {
@@ -102,7 +109,7 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🍔 Меню", "menu:page:0")
+                    InlineKeyboardButton.WithCallbackData("🍔 Меню", MenuCommand.GetPage.Command)
                 }
             });
 
@@ -120,13 +127,13 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    new InlineKeyboardButton("Перейти к списку заказов", "GetOrder")
+                    new InlineKeyboardButton("Перейти к консоли администратора.", AdministrationCommands.ToHomeConsole.Command)
                 }
             });
 
             await _bot.SendMessage(
                 chatId: chatId,
-                text: "Ваша роль - администратор.",
+                text: "Добро пожаловать! Ваша роль - администратор.",
                 replyMarkup: requestContactKeyboard);
         }
 

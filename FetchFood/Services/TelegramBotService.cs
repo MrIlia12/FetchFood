@@ -15,6 +15,9 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using static System.Net.Mime.MediaTypeNames;
+using System.Collections.Concurrent;
+using FetchFood.States;
+using DataAccess.Entities;
 
 
 namespace FetchFood.Services
@@ -30,7 +33,8 @@ namespace FetchFood.Services
         private readonly IMakingOrdersService _makingOrdersService;
         private readonly ICourierService _courierService;
         private readonly ICartService _cartService;
-        private readonly BusinessLogic.Services.Menu.Abstractions.ICategoryService _categoryService;
+        private readonly ConcurrentDictionary<long, UserState> _usersState = new();
+        private readonly ICategoryService _categoryService;
 
         public TelegramBotService(
             IAuthorizationService authorizationService,
@@ -47,7 +51,6 @@ namespace FetchFood.Services
             _menuService = menuService;
             _makingOrdersService = makingOrdersService;
             _categoryService = categoryService;
-            _courierService = courierService,
             _courierService = courierService;
         }
 
@@ -79,70 +82,65 @@ namespace FetchFood.Services
 
         private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
         {
-            BotCommandHandler? handler = update.Type is UpdateType.CallbackQuery
-                ? await GetHandlerAsync(update, update.CallbackQuery.Data)
-                : update.Message.Text == BotCommands.START || update.Message.Type is MessageType.Contact
-                    ? new BotAuthorizationHandler(update, this._bot, this._authorizationService)
-                    : await HandleReplyMessage(update);
+            var userId = update.Type is UpdateType.CallbackQuery
+                ? update.CallbackQuery.From.Id
+                : update.Message.From.Id;
+
+            var userState = _usersState.GetOrAdd(userId, new UserState(new NonAuthorizedUser()));
+
+            BotCommandHandler? handler = await GetHandlerAsync(update, userState);
 
             handler?.Invoke();
             return;
         }
 
-        private async Task<BotCommandHandler> GetHandlerAsync(Update update, string command)
+        private async Task<BotCommandHandler> GetHandlerAsync(Update update, UserState userState)
         {
             string commandPrefix;
-            try
+            BotCommandHandler handler;
+            switch (userState.State)
             {
-                commandPrefix = command.Split(CommandsBase.Separator)[0];
+                case NonAuthorizedUser:
+                    return new BotAuthorizationHandler(update, this._bot, this._authorizationService, this._usersState);
+
+                case AuthorizedUser:
+                    if (update.CallbackQuery.Data is not null)
+                    {
+                        if (update.CallbackQuery.Data == MakingOrdersCommand.StartOrder.Command)
+                        {
+                            var userId = update.CallbackQuery.From.Id;
+                            var state = this._usersState[userId];
+                            this._usersState[userId].State.ToNextState(state);
+                            return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState);
+                        }
+
+                        try
+                        {
+                            commandPrefix = update.CallbackQuery.Data.Split(CommandsBase.Separator)[0];
+                        }
+                        catch
+                        {
+                            throw new ArgumentException("Неверный формат команды.");
+                        }
+
+                        handler = commandPrefix switch
+                        {
+                            MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService, this._usersState),
+                            AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService, this._usersState),
+                            BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService, this._usersState),
+                        };
+
+                        return handler;
+                    }
+
+                    return new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService, this._usersState);
+
+                case IsMakingOrder:
+                    return new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService, this._usersState);
+
+                default:
+                    throw new NotImplementedException();
             }
-            catch
-            {
-                throw new ArgumentException("Неверный формат команды.");
-            }
-
-            BotCommandHandler handler = commandPrefix switch
-            {
-                MakingOrdersCommand.ORDER => new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService),
-                MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService),
-                AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService),
-                BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService),
-                CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService)
-            };
-
-            return handler;
-        }
-
-        private Task<BotCommandHandler?> HandleReplyMessage(Update update)
-        {
-            var chatId = update.Message?.Chat.Id ?? 0;
-
-            // Проверяем есть ли сохранённая команда для меню
-            if (BotMenuHandler.HasPendingCommand(chatId))
-            {
-                return Task.FromResult<BotCommandHandler?>(
-                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
-            }
-
-            // Если нет reply - вернуть null
-            if (update.Message?.ReplyToMessage?.Text is not { } replyMessage)
-                return Task.FromResult<BotCommandHandler?>(null);
-
-            // Проверяем по префиксу команды в тексте промпта
-            if (replyMessage.Contains($"{MenuCommand.MENU}:"))
-            {
-                return Task.FromResult<BotCommandHandler?>(
-                    new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService));
-            }
-
-            if (replyMessage.Contains($"{MakingOrdersCommand.ORDER}:"))
-            {
-                return Task.FromResult<BotCommandHandler?>(
-                    new BotMakingOrdersHandler(update, this._bot, this._makingOrdersService));
-            }
-
-            // Неизвестный reply - игнорируем
-            return Task.FromResult<BotCommandHandler?>(null);
         }
 
         private static Task HandleErrorAsync(ITelegramBotClient _, Exception ex, CancellationToken __)
