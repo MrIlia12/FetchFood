@@ -13,8 +13,7 @@ namespace FetchFood.Commands.Menu.Navigation
         {
             var categories = await ctx.CategoryService.GetAllCategoriesAsync(ctx.CancellationToken);
             // ВРЕМЕННО
-            //var isAdmin = await ctx.IsAdminAsync();
-            bool isAdmin = true;
+            var isAdmin = await ctx.IsAdminAsync();            
 
             var rows = new List<InlineKeyboardButton[]>();
 

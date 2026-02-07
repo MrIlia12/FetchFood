@@ -61,7 +61,7 @@ namespace FetchFood.Commands.Menu.Navigation
             sb.Append($"{(p.Name ?? "").Trim()}\nЦена: {FormatPrice(p.Price)}");
 
             if (p.Category != null)
-                sb.Append($"\n📂 Категория: {p.Category.Name}");
+                sb.Append($"\nКатегория: {p.Category.Name}");
 
             if (!string.IsNullOrWhiteSpace(p.Ingredients))
                 sb.Append($"\nСостав: {p.Ingredients}");
