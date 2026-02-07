@@ -52,9 +52,9 @@ namespace FetchFood.Services
                 {
                     case UserRole.Administrator:
                         await GetAdministratorConsoleAsync(message.Chat.Id);
-                        ////this._userState[userId] = new UserState(new AuthorizedAdministrator());
                         break;
                     case UserRole.Courier:
+                        await _authorizationService.AuthorizeCourierAsync(userId);
                         await GetCourierConsoleAsync(message.Chat.Id);
                         break;
                     default:

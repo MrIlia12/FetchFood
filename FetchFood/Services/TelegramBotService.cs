@@ -104,7 +104,7 @@ namespace FetchFood.Services
                     return new BotAuthorizationHandler(update, this._bot, this._authorizationService, this._usersState);
 
                 case AuthorizedUser:
-                    if (update.CallbackQuery.Data is not null)
+                    if (update.CallbackQuery is not null)
                     {
                         if (update.CallbackQuery.Data == MakingOrdersCommand.StartOrder.Command)
                         {
@@ -128,6 +128,7 @@ namespace FetchFood.Services
                             MenuCommand.MENU => new BotMenuHandler(update, this._bot, this._menuService, this._categoryService, this._authorizationService, this._usersState),
                             AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService, this._usersState),
                             BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService, this._usersState),
+                            CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService, this._usersState),
                         };
 
                         return handler;

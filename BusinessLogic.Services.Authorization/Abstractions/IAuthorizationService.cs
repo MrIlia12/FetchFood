@@ -16,6 +16,8 @@ namespace BusinessLogic.Services.Authorization.Abstractions
 
         Task<UserRole> GetUserRoleAsync(long userId);
 
+        Task<bool> AuthorizeCourierAsync(long userId);
+
         Task<bool> IsUserAdministratorAsync(long userId);
     }
 }

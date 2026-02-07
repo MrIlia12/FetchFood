@@ -62,11 +62,11 @@ namespace BusinessLogic.Services.Courier.Implementation
             try
             {
                 // Получаем заказы в статусах "Created" и "InDelivery"
-                var createdOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.Created);
+                //var createdOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.Created);
                 var inDeliveryOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.InDelivery);
                 
                 var allOrders = new List<Orders>();
-                if (createdOrders != null) allOrders.AddRange(createdOrders);
+                //if (createdOrders != null) allOrders.AddRange(createdOrders);
                 if (inDeliveryOrders != null) allOrders.AddRange(inDeliveryOrders);
                 
                 return allOrders.OrderByDescending(o => o.DateOrder).ToList();
