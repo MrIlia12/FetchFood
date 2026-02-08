@@ -3,6 +3,7 @@ using DataAccess.Entities;
 using DataAccess.Entities.Models;
 using DataAccess.Repositories.Abstractions;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.Metrics;
 
 namespace BusinessLogic.Services.Courier.Implementation
 {
@@ -14,6 +15,7 @@ namespace BusinessLogic.Services.Courier.Implementation
         private readonly ILogger<CourierService> _logger;
         private readonly IOrdersRepository _ordersRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ICourierRepository _courierRepository;
 
         /// <summary>
         /// Статусы заказа
@@ -21,6 +23,7 @@ namespace BusinessLogic.Services.Courier.Implementation
         public static class OrderStatuses
         {
             public const string Created = "Created";
+            public const string ToDelivery = "ToDelivery";
             public const string InDelivery = "InDelivery";
             public const string CourierArrived = "CourierArrived";
             public const string Completed = "Completed";
@@ -30,10 +33,12 @@ namespace BusinessLogic.Services.Courier.Implementation
         public CourierService(
             IOrdersRepository ordersRepository,
             IUserRepository userRepository,
+            ICourierRepository courierRepository,
             ILogger<CourierService> logger)
         {
             _ordersRepository = ordersRepository;
             _userRepository = userRepository;
+            _courierRepository = courierRepository;
             _logger = logger;
         }
 
@@ -57,16 +62,14 @@ namespace BusinessLogic.Services.Courier.Implementation
         /// <summary>
         /// Получает список активных заказов для курьера
         /// </summary>
-        public async Task<List<Orders>> GetCourierOrdersAsync(long courierId)
+        public async Task<List<Orders>> GetAvailableOrdersAsync(long courierId)
         {
             try
             {
-                // Получаем заказы в статусах "Created" и "InDelivery"
-                //var createdOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.Created);
-                var inDeliveryOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.InDelivery);
+                // Получаем заказы в статусе "ToDelivery"
+                var inDeliveryOrders = await _ordersRepository.GetOrdersByStatusAsync(OrderStatuses.ToDelivery);
                 
                 var allOrders = new List<Orders>();
-                //if (createdOrders != null) allOrders.AddRange(createdOrders);
                 if (inDeliveryOrders != null) allOrders.AddRange(inDeliveryOrders);
                 
                 return allOrders.OrderByDescending(o => o.DateOrder).ToList();
@@ -74,6 +77,29 @@ namespace BusinessLogic.Services.Courier.Implementation
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Ошибка при получении заказов курьера {courierId}");
+                return new List<Orders>();
+            }
+        }
+
+        /// <summary>
+        /// Получает список заказов данного курьера.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<List<Orders>> GetCourierOrdersAsync(long userId)
+        {
+            try
+            {
+                var courier = await _courierRepository.GetCourierByUserIdAsync(userId);
+                var inDeliveryOrders = await _ordersRepository.GetCourierOrdersAsync(courier.CourierId);
+
+                var allOrders = new List<Orders>();
+                if (inDeliveryOrders != null) allOrders.AddRange(inDeliveryOrders);
+
+                return allOrders.OrderByDescending(o => o.DateOrder).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Ошибка при получении заказов курьера {userId}");
                 return new List<Orders>();
             }
         }
@@ -148,6 +174,29 @@ namespace BusinessLogic.Services.Courier.Implementation
                     Success = false,
                     Message = "❌ Произошла ошибка. Попробуйте позже."
                 };
+            }
+        }
+
+        /// <summary>
+        /// Берём в доставку заказ
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> TakeOrderInDeliveryAsync(long courierId, int orderId)
+        {
+            try
+            {
+                var courier = await _courierRepository.GetCourierByUserIdAsync(courierId);
+                var order = await _ordersRepository.GetOrderByIdAsync(orderId);
+
+                order.IdCourier = courier.CourierId;
+                order.Status = OrderStatuses.InDelivery;
+
+                return await _ordersRepository.UpdateOrderAsync(order);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Ошибка при обновлении заказа {orderId} курьером {courierId}");
+                return false;
             }
         }
 

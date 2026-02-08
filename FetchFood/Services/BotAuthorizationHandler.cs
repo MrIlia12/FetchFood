@@ -146,13 +146,14 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("📦 Мои заказы", Commands.CourierCommands.ViewOrders.Command)
+                    InlineKeyboardButton.WithCallbackData("📦 Мои заказы", Commands.CourierCommands.ViewOrders.Command),
+                    InlineKeyboardButton.WithCallbackData("📦 Доступные заказы", CourierCommands.ViewAvailableOrders.Command)
                 }
             });
 
             await _bot.SendMessage(
                 chatId: chatId,
-                text: "🚗 Добро пожаловать, курьер!\n\nНажмите кнопку ниже, чтобы посмотреть активные заказы для доставки.",
+                text: "🚗 Добро пожаловать, курьер!\n\nНажмите на кнопки ниже, чтобы посмотреть активные заказы для доставки.",
                 replyMarkup: courierKeyboard);
         }
 

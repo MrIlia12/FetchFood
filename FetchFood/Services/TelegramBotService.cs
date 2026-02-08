@@ -18,6 +18,7 @@ using static System.Net.Mime.MediaTypeNames;
 using System.Collections.Concurrent;
 using FetchFood.States;
 using DataAccess.Entities;
+using System.Reflection.Metadata.Ecma335;
 
 
 namespace FetchFood.Services
@@ -87,6 +88,10 @@ namespace FetchFood.Services
                 : update.Message.From.Id;
 
             var userState = _usersState.GetOrAdd(userId, new UserState(new NonAuthorizedUser()));
+            if (update.Message?.Text == BotCommands.START && userState.State is not IsMakingOrder)
+            {
+                _usersState[userId] = new UserState(new NonAuthorizedUser());
+            }
 
             BotCommandHandler? handler = await GetHandlerAsync(update, userState);
 
@@ -129,6 +134,7 @@ namespace FetchFood.Services
                             AdministrationCommands.ADMIN => new BotAdministrationHandler(update, this._bot, this._administrationService, this._usersState),
                             BotCommands.CART => new BotCartHandler(update, this._bot, this._cartService, this._usersState),
                             CourierCommands.COURIER => new BotCourierHandler(update, this._bot, this._courierService, this._usersState),
+                            _ => new BotNullHandler(update, _bot, _usersState),
                         };
 
                         return handler;

@@ -17,9 +17,10 @@
     public static class OrderStatus
     {
         public const string Created = "Created";
+        public const string ToDelivery = "ToDelivery";
         public const string InDelivery = "InDelivery";
         public const string Cancelled = "Cancelled";
-        public const string Confirmed = "Confirmed";
+        public const string Completed = "Completed";
     }
 
     public static class BotCommands

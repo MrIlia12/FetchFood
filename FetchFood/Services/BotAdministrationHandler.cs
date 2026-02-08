@@ -69,6 +69,10 @@ namespace FetchFood.Services
                     await this.ShowOrders(command);
                     return;
 
+                case AdministrationCommands.SHOWCOMPLETEDORDERS:
+                    await this.ShowOrders(command);
+                    return;
+
                 case AdministrationCommands.COURIERSORDERS:
                     await this.ShowOrders(command);
                     return;
@@ -78,7 +82,7 @@ namespace FetchFood.Services
                     return;
 
                 case AdministrationCommands.TODELIVERY:
-                    await UpdateOrderAsync(OrderStatus.InDelivery);
+                    await UpdateOrderAsync(OrderStatus.ToDelivery);
                     return;
 
                 case AdministrationCommands.CANCEL:
@@ -102,7 +106,7 @@ namespace FetchFood.Services
 
             switch (newStatus)
             {
-                case OrderStatus.InDelivery:
+                case OrderStatus.ToDelivery:
                     await this._bot.SendMessage(
                             chatId: userId,
                             text: "Ваш заказ готов и передан в доставку, ожидайте курьера.");
@@ -137,10 +141,9 @@ namespace FetchFood.Services
                         InlineKeyboardButton.WithCallbackData("❌ Отменить.", AdministrationCommands.CancelOrder.Command + $"{order.OrderId}"),
                         InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowActiveOrders.Command + ":0")
                         }));
-
                     break;
 
-                case OrderStatus.InDelivery:
+                case OrderStatus.ToDelivery:
                     await this._bot.SendMessage(
                         chatId: Update.CallbackQuery.From.Id,
                         text: message,
@@ -149,7 +152,17 @@ namespace FetchFood.Services
                         {
                             InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowCouriersOrders.Command + ":0")
                         }));
+                    break;
 
+                case OrderStatus.Completed:
+                    await this._bot.SendMessage(
+                        chatId: Update.CallbackQuery.From.Id,
+                        text: message,
+                        replyMarkup: new InlineKeyboardMarkup(
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowCompletedOrders.Command + ":0")
+                        }));
                     break;
             }
 
@@ -164,7 +177,8 @@ namespace FetchFood.Services
             var orderStatus = command switch
             {
                 AdministrationCommands.SHOWACTIVEORDERS => OrderStatus.Created,
-                AdministrationCommands.COURIERSORDERS => OrderStatus.InDelivery,
+                AdministrationCommands.COURIERSORDERS => OrderStatus.ToDelivery,
+                AdministrationCommands.SHOWCOMPLETEDORDERS => OrderStatus.Completed,
                 _ => throw new Exception("Неизвестная команда.")
             };
 
@@ -172,10 +186,16 @@ namespace FetchFood.Services
             {
                 AdministrationCommands.SHOWACTIVEORDERS => AdministrationCommands.ShowActiveOrders.Command,
                 AdministrationCommands.COURIERSORDERS => AdministrationCommands.ShowCouriersOrders.Command,
+                AdministrationCommands.SHOWCOMPLETEDORDERS => AdministrationCommands.ShowCompletedOrders.Command,
                 _ => throw new Exception("Неизвестная команда.")
             };
 
             var orders = await this._administrationService.GetOrdersAsync(orderStatus);
+
+            if (orderStatus == OrderStatus.ToDelivery)
+            {
+                orders.AddRange(await this._administrationService.GetOrdersAsync(OrderStatus.InDelivery));
+            }
 
             if (orders.Count == 0)
             {
@@ -235,18 +255,18 @@ namespace FetchFood.Services
         private static string FormatOrderCaption(Orders p)
         {
             var sb = new StringBuilder();
-            sb.Append($"{p.DateOrder}\nID: {p.OrderId}" +
-                $"\nПользователь: {p.IdUser}" +
-                $"\nТелефон: {p.PhoneNumber}" +
-                $"\nАдрес: {p.Address}" +
-                $"\nИтоговая стоимость: {p.Price}" +
-                "\nСтатус: " + p.Status);
+            sb.Append($"*{p.DateOrder}*\n *ID:* {p.OrderId}" +
+                $"\n👤 *Пользователь:* {p.IdUser}" +
+                $"\n📞 *Телефон:* {p.PhoneNumber}" +
+                $"\n📍 *Адрес:* {p.Address}" +
+                $"\n💰 *Сумма:* {p.Price} ₽" +
+                $"\n📊 *Статус:* {GetStatusText(p.Status)}");
 
             if (p.IdCourier != null)
-                sb.Append($"\n📂 Категория: {p.IdCourier}");
+                sb.Append($"\n📦 *ID курьера*: {p.IdCourier}");
 
             if (!string.IsNullOrWhiteSpace(p.Comment))
-                sb.Append($"\nКомментарий: {p.Comment}");
+                sb.Append($"\n💬 *Комментарий:* {p.Comment}");
 
             return sb.ToString();
         }
@@ -269,9 +289,9 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Активные заказы.", AdministrationCommands.ShowActiveOrders.Command + ":0"),
-                    InlineKeyboardButton.WithCallbackData("Заказы у курьеров.", AdministrationCommands.ShowCouriersOrders.Command + ":0"),
-                    InlineKeyboardButton.WithCallbackData("Завершённые заказы.", AdministrationCommands.ShowCompletedOrders.Command + ":0")
+                    InlineKeyboardButton.WithCallbackData("📋 Активные заказы.", AdministrationCommands.ShowActiveOrders.Command + ":0"),
+                    InlineKeyboardButton.WithCallbackData("📦 Заказы у курьеров.", AdministrationCommands.ShowCouriersOrders.Command + ":0"),
+                    InlineKeyboardButton.WithCallbackData("✅ Завершённые заказы.", AdministrationCommands.ShowCompletedOrders.Command + ":0")
                 },
             });
         }
@@ -285,5 +305,16 @@ namespace FetchFood.Services
 
             return data;
         }
+
+        private static string GetStatusText(string status) => status switch
+        {
+            "Created" => "🆕 Создан",
+            "ToDelivery" => "🚗 Готов к доставке",
+            "InDelivery" => "🚗 В доставке",
+            "CourierArrived" => "📍 Курьер на месте",
+            "Completed" => "✅ Завершен",
+            "Cancelled" => "❌ Отменен",
+            _ => status
+        };
     }
 }

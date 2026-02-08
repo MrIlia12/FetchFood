@@ -4,7 +4,7 @@
     {
         public override void ToNextState(UserState userState)
         {
-            userState.State = new CompletedMakingOrder();
+            userState.State = new NonAuthorizedUser();
         }
     }
 }
