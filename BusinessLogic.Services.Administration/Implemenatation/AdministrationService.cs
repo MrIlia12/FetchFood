@@ -34,5 +34,53 @@ namespace BusinessLogic.Services.Administration.Implemenatation
 
             return orders;
         }
+
+        public async Task<Orders> GetOrderAsync(int orderId)
+        {
+            Orders order;
+            try
+            {
+                order = await _orderRepository.GetOrderByIdAsync(orderId);
+            }
+            catch
+            {
+                throw new Exception("Ошибка в выгрузке заказов.");
+            }
+
+            return order;
+        }
+
+        public async Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus)
+        {
+            bool result;
+            try
+            {
+                var order = await _orderRepository.GetOrderByIdAsync(orderId);
+                order.Status = newStatus;
+                result = await _orderRepository.UpdateOrderAsync(order);
+            }
+            catch
+            {
+                throw new Exception("Ошибка при работе с заказами в БД.");
+            }
+
+            return result;
+        }
+
+        public async Task<long> GetOrdersUserIdAsync(int orderId)
+        {
+            long userId;
+            try
+            {
+                var order = await _orderRepository.GetOrderByIdAsync(orderId);
+                userId = order.IdUser;
+            }
+            catch
+            {
+                throw new Exception("Ошибка при выгрузке заказов.");
+            }
+
+            return userId;
+        }
     }
 }

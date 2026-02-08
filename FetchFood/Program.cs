@@ -86,10 +86,11 @@ public static class Program
     {
         serviceCollection
             .AddTransient<IUserRepository, UserRepository>()
-			.AddTransient<IPositionRepository, PositionRepository>()
+            .AddTransient<IPositionRepository, PositionRepository>()
             .AddTransient<IPositionCategoryRepository, PositionCategoryCategoryRepository>()
             .AddTransient<IOrdersDataRepository, OrderDataRepository>()
-            .AddTransient<IOrdersRepository, OrdersRepository>();
+            .AddTransient<IOrdersRepository, OrdersRepository>()
+            .AddTransient<ICourierRepository, CourierRepository>();
     }
 
 }

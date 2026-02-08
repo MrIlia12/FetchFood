@@ -1,16 +1,12 @@
 ﻿using Telegram.Bot.Types.ReplyMarkups;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot;
 using BusinessLogic.Services.Administration.Abstraction;
-using Telegram.Bot;
 using FetchFood.States;
 using System.Collections.Concurrent;
 using FetchFood.Commands;
-using System.Diagnostics;
 using DataAccess.Entities;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using static System.Net.Mime.MediaTypeNames;
+using System.Text;
 
 namespace FetchFood.Services
 {
@@ -35,19 +31,7 @@ namespace FetchFood.Services
         {
             try
             {
-                // Обработка кнопок
-                if (Update.CallbackQuery != null)
-                {
-                    await HandleCallbackQueryAsync();
-                    return;
-                }
-
-                // Обработка текстовых сообщений
-                if (Update.Message != null)
-                {
-                    ////await HandleMessageAsync();
-                    ////return;
-                }
+                await HandleCallbackQueryAsync();
             }
             catch (Exception ex)
             {
@@ -63,43 +47,169 @@ namespace FetchFood.Services
             var callback = Update.CallbackQuery;
             var userId = callback.From.Id;
             var chatId = callback.Message.Chat.Id;
+            var command = callback.Data.Split(CommandsBase.Separator)[1];
 
-            if (callback.Data == AdministrationCommands.ToHomeConsole.Command)
+            switch (command)
             {
-                await this._bot.SendMessage(
-                                chatId: userId,
-                                text: $"Консоль администратора.",
-                                replyMarkup: GetHomeAdministrationKeyboard());
-                return;
-            }
-
-            if (callback.Data == AdministrationCommands.ShowOrders.Command)
-            {
-                await this._bot.SendMessage(
+                case AdministrationCommands.SHOWORDERS:
+                    await this._bot.SendMessage(
                                 chatId: userId,
                                 text: $"Консоль администратора.",
                                 replyMarkup: GetHomeOrdersKeyboard());
+                    return;
+
+                case AdministrationCommands.TOHOMECONSOLE:
+                    await this._bot.SendMessage(
+                                chatId: userId,
+                                text: $"Консоль администратора.",
+                                replyMarkup: GetHomeAdministrationKeyboard());
+                    return;
+
+                case AdministrationCommands.SHOWACTIVEORDERS:
+                    await this.ShowOrders(command);
+                    return;
+
+                case AdministrationCommands.SHOWCOMPLETEDORDERS:
+                    await this.ShowOrders(command);
+                    return;
+
+                case AdministrationCommands.COURIERSORDERS:
+                    await this.ShowOrders(command);
+                    return;
+
+                case BotCommands.GETORDERS:
+                    await GetOrderAsync();
+                    return;
+
+                case AdministrationCommands.TODELIVERY:
+                    await UpdateOrderAsync(OrderStatus.ToDelivery);
+                    return;
+
+                case AdministrationCommands.CANCEL:
+                    await UpdateOrderAsync(OrderStatus.Cancelled);
+                    return;
+            }
+
+            return;
+        }
+
+        private async Task UpdateOrderAsync(string newStatus)
+        {
+            int orderId = this.ParseCommand();
+            var userId = await this._administrationService.GetOrdersUserIdAsync(orderId);
+            var result = await this._administrationService.UpdateOrderStatusAsync(orderId, newStatus);
+
+            if (!result)
+            {
+                throw new Exception("Не удалось обновить статуса заказа.");
+            }
+
+            switch (newStatus)
+            {
+                case OrderStatus.ToDelivery:
+                    await this._bot.SendMessage(
+                            chatId: userId,
+                            text: "Ваш заказ готов и передан в доставку, ожидайте курьера.");
+                    break;
+
+                case OrderStatus.Cancelled:
+                    await this._bot.SendMessage(
+                            chatId: userId,
+                            text: "К сожалению, Ваш заказ отменён по техническим причинам.");
+                    break;
+            }
+
+            return;
+        }
+
+        private async Task GetOrderAsync()
+        {
+            int orderId = this.ParseCommand();
+            var order = await this._administrationService.GetOrderAsync(orderId);
+            var message = FormatOrderCaption(order);
+
+            switch (order.Status)
+            {
+                case OrderStatus.Created:
+                    await this._bot.SendMessage(
+                        chatId: Update.CallbackQuery.From.Id,
+                        text: message,
+                        replyMarkup: new InlineKeyboardMarkup(
+                        new[]
+                        {
+                        InlineKeyboardButton.WithCallbackData("📦 Передать в доставку.", AdministrationCommands.ToDelivery.Command + $"{order.OrderId}"),
+                        InlineKeyboardButton.WithCallbackData("❌ Отменить.", AdministrationCommands.CancelOrder.Command + $"{order.OrderId}"),
+                        InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowActiveOrders.Command + ":0")
+                        }));
+                    break;
+
+                case OrderStatus.ToDelivery:
+                    await this._bot.SendMessage(
+                        chatId: Update.CallbackQuery.From.Id,
+                        text: message,
+                        replyMarkup: new InlineKeyboardMarkup(
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowCouriersOrders.Command + ":0")
+                        }));
+                    break;
+
+                case OrderStatus.Completed:
+                    await this._bot.SendMessage(
+                        chatId: Update.CallbackQuery.From.Id,
+                        text: message,
+                        replyMarkup: new InlineKeyboardMarkup(
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("⬅️ Назад к заказам.", AdministrationCommands.ShowCompletedOrders.Command + ":0")
+                        }));
+                    break;
+            }
+
+
+            return;
+        }
+
+        private async Task ShowOrders(string command)
+        {
+            int page = this.ParseCommand();
+
+            var orderStatus = command switch
+            {
+                AdministrationCommands.SHOWACTIVEORDERS => OrderStatus.Created,
+                AdministrationCommands.COURIERSORDERS => OrderStatus.ToDelivery,
+                AdministrationCommands.SHOWCOMPLETEDORDERS => OrderStatus.Completed,
+                _ => throw new Exception("Неизвестная команда.")
+            };
+
+            var buttonCommand = command switch
+            {
+                AdministrationCommands.SHOWACTIVEORDERS => AdministrationCommands.ShowActiveOrders.Command,
+                AdministrationCommands.COURIERSORDERS => AdministrationCommands.ShowCouriersOrders.Command,
+                AdministrationCommands.SHOWCOMPLETEDORDERS => AdministrationCommands.ShowCompletedOrders.Command,
+                _ => throw new Exception("Неизвестная команда.")
+            };
+
+            var orders = await this._administrationService.GetOrdersAsync(orderStatus);
+
+            if (orderStatus == OrderStatus.ToDelivery)
+            {
+                orders.AddRange(await this._administrationService.GetOrdersAsync(OrderStatus.InDelivery));
+            }
+
+            if (orders.Count == 0)
+            {
+                await this._bot.SendMessage(
+                        chatId: Update.CallbackQuery.From.Id,
+                        text: "Нет заказов.",
+                        replyMarkup: new InlineKeyboardMarkup(
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData("Вернуться.", AdministrationCommands.ShowOrders.Command)
+                        }));
                 return;
             }
 
-            if (callback.Data == AdministrationCommands.ShowActiveOrders.Command)
-            {
-                await this.ShowActiveOrders();
-            }
-
-            await _bot.AnswerCallbackQuery(callback.Id);
-        }
-
-        private async Task ShowActiveOrders()
-        {
-            int page;
-
-            if (!int.TryParse(Update.CallbackQuery.Data.Split(AdministrationCommands.Separator)[2], out page))
-            { 
-                throw new Exception("Неверный формат команды");
-            }
-
-            var orders = await this._administrationService.GetOrdersAsync("Created");
             int pageSize = GlobalParams.MENU_ITEMS_CNT;
 
             int total = orders.Count;
@@ -114,16 +224,19 @@ namespace FetchFood.Services
             var itemButtons = pageItems
                 .Select(p => InlineKeyboardButton.WithCallbackData(
                     $"{p.DateOrder}",
-                    $"{BotCommands.MENU}:{BotCommands.POSITION}:{p.OrderId}"))
+                    AdministrationCommands.GetOrder + $"{p.OrderId}"))
                 .Chunk(2)
                 .Select(r => r.ToArray())
                 .ToList();
 
             var navRow = new List<InlineKeyboardButton>();
             if (page > 0)
-                navRow.Add(InlineKeyboardButton.WithCallbackData("⬅️ Назад", AdministrationCommands.ShowActiveOrders.Command + $":{page - 1}"));
+                navRow.Add(InlineKeyboardButton.WithCallbackData("⬅️ Назад", buttonCommand + $":{page - 1}"));
+
+            navRow.Add(InlineKeyboardButton.WithCallbackData("Вернуться.", AdministrationCommands.ShowOrders.Command));
+
             if (page < totalPages - 1)
-                navRow.Add(InlineKeyboardButton.WithCallbackData("Далее ➡️", AdministrationCommands.ShowActiveOrders.Command + $":{page + 1}"));
+                navRow.Add(InlineKeyboardButton.WithCallbackData("Далее ➡️", buttonCommand + $":{page + 1}"));
 
             var rows = new List<InlineKeyboardButton[]>();
             rows.AddRange(itemButtons);
@@ -137,6 +250,25 @@ namespace FetchFood.Services
                 replyMarkup: new InlineKeyboardMarkup(rows));
 
             return;
+        }
+
+        private static string FormatOrderCaption(Orders p)
+        {
+            var sb = new StringBuilder();
+            sb.Append($"*{p.DateOrder}*\n *ID:* {p.OrderId}" +
+                $"\n👤 *Пользователь:* {p.IdUser}" +
+                $"\n📞 *Телефон:* {p.PhoneNumber}" +
+                $"\n📍 *Адрес:* {p.Address}" +
+                $"\n💰 *Сумма:* {p.Price} ₽" +
+                $"\n📊 *Статус:* {GetStatusText(p.Status)}");
+
+            if (p.IdCourier != null)
+                sb.Append($"\n📦 *ID курьера*: {p.IdCourier}");
+
+            if (!string.IsNullOrWhiteSpace(p.Comment))
+                sb.Append($"\n💬 *Комментарий:* {p.Comment}");
+
+            return sb.ToString();
         }
 
         private static InlineKeyboardMarkup GetHomeAdministrationKeyboard()
@@ -157,11 +289,32 @@ namespace FetchFood.Services
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Активные заказы.", AdministrationCommands.ShowActiveOrders.Command + ":0"),
-                    InlineKeyboardButton.WithCallbackData("Заказы у курьеров.", AdministrationCommands.ShowCouriersOrders.Command),
-                    InlineKeyboardButton.WithCallbackData("Завершённые заказы.", AdministrationCommands.ShowCompletedOrders.Command)
+                    InlineKeyboardButton.WithCallbackData("📋 Активные заказы.", AdministrationCommands.ShowActiveOrders.Command + ":0"),
+                    InlineKeyboardButton.WithCallbackData("📦 Заказы у курьеров.", AdministrationCommands.ShowCouriersOrders.Command + ":0"),
+                    InlineKeyboardButton.WithCallbackData("✅ Завершённые заказы.", AdministrationCommands.ShowCompletedOrders.Command + ":0")
                 },
             });
         }
+
+        private int ParseCommand()
+        {
+            if (!int.TryParse(this.Update.CallbackQuery.Data.Split(CommandsBase.Separator)[2], out int data))
+            {
+                throw new Exception("Неверный формат команды");
+            }
+
+            return data;
+        }
+
+        private static string GetStatusText(string status) => status switch
+        {
+            "Created" => "🆕 Создан",
+            "ToDelivery" => "🚗 Готов к доставке",
+            "InDelivery" => "🚗 В доставке",
+            "CourierArrived" => "📍 Курьер на месте",
+            "Completed" => "✅ Завершен",
+            "Cancelled" => "❌ Отменен",
+            _ => status
+        };
     }
 }

@@ -3,6 +3,7 @@ using DataAccess.EntityFramework;
 using DataAccess.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Types;
 
 namespace DataAccess.Repositories.Implementations
 {
@@ -11,6 +12,8 @@ namespace DataAccess.Repositories.Implementations
     /// </summary>
     public class OrdersRepository : IOrdersRepository
     {
+        public const string Completed = "Completed";
+
         // Фабрика для создания областей видимости (scopes) зависимостей
         private readonly IServiceScopeFactory _scopeFactory;
 
@@ -127,6 +130,20 @@ namespace DataAccess.Repositories.Implementations
                 .Where(o => o.Status == status)           // Фильтруем по статусу
                 .OrderByDescending(o => o.DateOrder)      // Сортируем по дате (сначала новые)
                 .ToListAsync();                           // Преобразуем в список
+        }
+
+        public async Task<List<Orders>> GetCourierOrdersAsync(long courierId)
+        {
+            // Каждый раз создаем НОВУЮ область видимости для изоляции работы с БД            
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            // Каждый раз получаем НОВЫЙ DbContext бд из контейнера зависимостей
+            DataContext dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+
+            return await dbContext.Orders
+                .Where(o => o.IdCourier == courierId)
+                .Where(o => o.Status != Completed)
+                .OrderByDescending(o => o.DateOrder)
+                .ToListAsync();
         }
     }
 
