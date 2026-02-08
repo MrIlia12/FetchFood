@@ -57,7 +57,7 @@ namespace FetchFood.Commands.Menu.Navigation
             var bottomRow = new[]
             {
                 InlineKeyboardButton.WithCallbackData("Категории", $"{BotCommands.MENU}:{BotCommands.CATEGORIES}"),
-                InlineKeyboardButton.WithCallbackData("Корзина", BotCommands.CART_SHOW)
+                InlineKeyboardButton.WithCallbackData("Корзина", CartCommand.ShowCart.Command)
             };
 
             var rows = new List<InlineKeyboardButton[]>();
