@@ -6,6 +6,7 @@ using DataAccess.Entities;
 using DataAccess.Entities.Models;
 using DataAccess.Repositories.Abstractions;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -30,6 +31,18 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
         private readonly IUserRepository _userRepository;
         private readonly ICartService _cartService;
         private Dictionary<string, OrderState> _states;
+
+        // ============================================================
+        // DEMO_MODE = true  → Логи + задержка 3 сек (для презентации)
+        // DEMO_MODE = false → Продакшен (режим без лишних логов и задержек)
+        // USE_SEMAPHORE = true  → Защита включена (ПРОДАКШЕН)
+        // USE_SEMAPHORE = false → Защита ВЫКЛючена (показать Состояние гонки)
+        // ============================================================
+        private const bool DEMO_MODE = false;
+        private const bool USE_SEMAPHORE = true;
+
+        // Семафоры для блокировки (защита от двойного клика)
+        private readonly ConcurrentDictionary<long, SemaphoreSlim> _userSemaphores = new();
 
         public MakingOrdersService(
             IOrdersRepository ordersRepository,
@@ -95,6 +108,41 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
         public async Task<OrderProcessingResult> ProcessUserInputAsync(long userId, string message)
         {
+            // Если защита ВЫКЛЮЧЕНА - показать Состояние гонки
+            if (!USE_SEMAPHORE)
+            {
+                _logger.LogError($"!!!!!! [NO PROTECTION] User {userId}: Processing WITHOUT semaphore! !!!!!!");
+                return await ProcessUserInputInternalAsync(userId, message);
+            }
+
+            // SemaphoreSlim: Защита от Состоянии гонки (двойной клик)
+            var semaphore = _userSemaphores.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
+
+            // Количество потоков в ожидании доступа к ресурсу
+            int waitingCount = 1 - semaphore.CurrentCount;
+
+            if (DEMO_MODE)
+                _logger.LogWarning($">>>>>> [SEMAPHORE] User {userId}: REQUEST RECEIVED (waiting: {waitingCount}) <<<<<<");
+
+            await semaphore.WaitAsync();
+
+            if (DEMO_MODE)
+                _logger.LogWarning($">>>>>> [SEMAPHORE] User {userId}: ENTERED <<<<<<");
+
+            try
+            {
+                return await ProcessUserInputInternalAsync(userId, message);
+            }
+            finally
+            {
+                semaphore.Release();
+                if (DEMO_MODE)
+                    _logger.LogWarning($"[SEMAPHORE] User {userId}: EXITED");
+            }
+        }
+
+        private async Task<OrderProcessingResult> ProcessUserInputInternalAsync(long userId, string message)
+        {
             try
             {
                 // Получаем текущие данные заказа из временных заказов
@@ -115,7 +163,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     orderData.CurrentState = typeof(WaitingForAddressState).Name;
                     currentState = _states[orderData.CurrentState];
                     await SaveOrderDataAsync(orderData);
-                }                
+                }
 
                 // Обрабатываем ввод данных через текущее состояние
                 var result = await currentState.HandleInputAsync(userId, message, orderData);
@@ -187,6 +235,13 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
                     return false;
                 }
 
+                // DEMO: Искусственная задержка для демонстрации Состоянии гонки
+                if (DEMO_MODE)
+                {
+                    _logger.LogWarning($"[DEMO] User {userId}: 3 sec delay...");
+                    await Task.Delay(3000);
+                }
+
                 // Очищаем корзину пользователя после сохранения заказа
                 await _cartService.ClearCartAsync(userId);
 
@@ -206,7 +261,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
                 // Очищаем временные данные
                 await _ordersDataRepository.DeleteOrderDataAsync(userId);
-                
+
 
                 _logger.LogInformation($"Заказ №{createdOrder.OrderId} успешно создан для пользователя {userId}");
                 return true;
@@ -302,7 +357,7 @@ namespace BusinessLogic.Services.MakingOrders.Implemenatation
 
         #endregion
 
-        
+
 
     }
 }

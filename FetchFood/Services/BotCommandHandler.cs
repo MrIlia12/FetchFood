@@ -8,7 +8,7 @@ namespace FetchFood.Services
     /// <summary>
     /// Абстрактный класс обработчика комманд (паттерн Фабричного метода)
     /// </summary>
-    abstract class BotCommandHandler
+    public abstract class BotCommandHandler
     {
         /// <summary>
         /// Данные акта взаимодействия с ботом.

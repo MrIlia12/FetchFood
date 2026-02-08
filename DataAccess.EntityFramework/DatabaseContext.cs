@@ -12,7 +12,11 @@ namespace DataAccess.EntityFramework
         public DbSet<Position> Positions { get; set; }
 
         public DbSet<Orders> Orders { get; set; }
+
         public DbSet<PositionCategory> PositionCategories { get; set;}
+
+        public DbSet<Courier> Couriers { get; set; }
+
         public DataContext(DbContextOptions<DataContext> options)
             : base(options)
         {

@@ -47,6 +47,12 @@ namespace DataAccess.Repositories.Abstractions
         Task<List<Orders>> GetUserOrdersAsync(long userId);
 
         /// <summary>
+        /// Получает все активные заказы, закреплённые за курьером и отсортированные по дате (сначала новые)
+        /// </summary>
+        /// <param name="userId">ID пользователя в Telegram</param>
+        Task<List<Orders>> GetCourierOrdersAsync(long courierId);
+
+        /// <summary>
         /// Получает заказы по статусу
         /// </summary>
         /// <param name="status">Статус заказа</param>

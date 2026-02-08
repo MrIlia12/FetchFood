@@ -13,6 +13,16 @@
         // число элементов, отображаемых на странице меню
         public const int MENU_ITEMS_CNT = 10;
     }
+
+    public static class OrderStatus
+    {
+        public const string Created = "Created";
+        public const string ToDelivery = "ToDelivery";
+        public const string InDelivery = "InDelivery";
+        public const string Cancelled = "Cancelled";
+        public const string Completed = "Completed";
+    }
+
     public static class BotCommands
     {
         public const string CART = "cart";
@@ -25,7 +35,7 @@
         public const string TOORDERMENU = "ToOrderMenu";
         public const string ORDERNEXTSTEP = "NextStep";
         public const string ORDERDELETE = "DeleteOrder";
-		// команды сервиса корзины
+        // команды сервиса корзины
         public const string SHOWCART = "🛒 Показать корзину";
         public const string ADDITEM = "В меню";
         public const string DELETEITEM = "Оформить заказ";
