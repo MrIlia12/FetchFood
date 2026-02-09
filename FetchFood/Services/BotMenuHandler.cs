@@ -6,6 +6,8 @@ using FetchFood.Commands.Menu.Categories;
 using FetchFood.Commands.Menu.Positions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 namespace FetchFood.Services
 {
@@ -55,7 +57,8 @@ namespace FetchFood.Services
             ITelegramBotClient botClient,
             IMenuService menuService,
             ICategoryService categoryService,
-            IAuthorizationService authorizationService) : base(update, botClient)
+            IAuthorizationService authorizationService,
+            ConcurrentDictionary<long, UserState> usersState) : base(update, botClient, usersState)
         {
             _dispatcher = new MenuCommandDispatcher(menuService, categoryService, authorizationService);
             RegisterCommands();
@@ -97,7 +100,7 @@ namespace FetchFood.Services
             );
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             string? data = string.Empty;
             long chatId;

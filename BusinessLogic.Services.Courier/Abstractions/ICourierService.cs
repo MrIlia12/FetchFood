@@ -11,6 +11,12 @@ namespace BusinessLogic.Services.Courier.Abstractions
         /// Получает список активных заказов, назначенных курьеру
         /// </summary>
         /// <param name="courierId">ID курьера в Telegram</param>
+        Task<List<Orders>> GetAvailableOrdersAsync(long courierId);
+
+        /// <summary>
+        /// Получает список активных заказов, назначенных курьеру
+        /// </summary>
+        /// <param name="courierId">ID курьера в Telegram</param>
         Task<List<Orders>> GetCourierOrdersAsync(long courierId);
 
         /// <summary>
@@ -33,6 +39,13 @@ namespace BusinessLogic.Services.Courier.Abstractions
         /// <param name="courierId">ID курьера в Telegram</param>
         /// <param name="orderId">ID заказа</param>
         Task<bool> CompleteDeliveryAsync(long courierId, long orderId);
+
+        /// <summary>
+        /// Курьер берёт заказ в доставку
+        /// </summary>
+        /// <param name="courierId">ID курьера в Telegram</param>
+        /// <param name="orderId">ID заказа</param>
+        Task<bool> TakeOrderInDeliveryAsync(long courierId, int orderId);
 
         /// <summary>
         /// Проверяет, является ли пользователь курьером

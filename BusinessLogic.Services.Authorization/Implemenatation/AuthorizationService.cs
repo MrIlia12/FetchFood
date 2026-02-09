@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using DataAccess.Repositories.Abstractions;
 using DataAccess.Entities;
-using Telegram.Bot;
 using DataAccess.Entities.Models;
 
 namespace BusinessLogic.Services.Authorization
@@ -14,6 +13,7 @@ namespace BusinessLogic.Services.Authorization
     {
         private readonly ILogger<AuthorizationService> Logger;
         private readonly IUserRepository UserRepository;
+        private readonly ICourierRepository CourierRepository;
 
         /// <summary>
         /// Ctor.
@@ -22,10 +22,12 @@ namespace BusinessLogic.Services.Authorization
         /// <param name="logger">Логгер.</param>
         public AuthorizationService(
         IUserRepository userRepository,
+        ICourierRepository courierRepository,
         ILogger<AuthorizationService> logger)
         {
             Logger = logger;
             UserRepository = userRepository;
+            CourierRepository = courierRepository;
         }
 
         /// <summary>
@@ -60,6 +62,36 @@ namespace BusinessLogic.Services.Authorization
         public async Task<bool> AuthorizeUserAsync(User user)
         {
             return await UserRepository.AddUserAsync(user);
+        }
+
+        /// <summary>
+        /// Авторизует курьера (добавляет в базу данных).
+        /// </summary>
+        /// <param name="user">Пользователь.</param>
+        /// <returns>Если успешно - true.</returns>
+        public async Task<bool> AuthorizeCourierAsync(long userId)
+        {
+            bool result;
+            try
+            {
+                Courier courier = await CourierRepository.GetCourierByUserIdAsync(userId);
+
+                if (courier is null)
+                {
+                    courier = new Courier
+                    {
+                        IdUser = userId,
+                    };
+
+                    return await CourierRepository.AddCourierAsync(courier);
+                }
+            }
+            catch
+            {
+                throw new Exception("Ошибка обращения к базе данных.");
+            }
+
+            return true;
         }
 
         /// <summary>

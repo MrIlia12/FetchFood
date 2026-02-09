@@ -9,7 +9,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using FetchFood.Commands;
-using BusinessLogic.Services.MakingOrders.Implemenatation;
+using FetchFood.States;
 
 namespace FetchFood.Services
 {
@@ -25,12 +25,12 @@ namespace FetchFood.Services
         private static readonly ConcurrentDictionary<long, string> _userState = new();
 
         // Внедрение зависимости бизнес-логики 
-        public BotCartHandler(Update update, ITelegramBotClient botClient, ICartService cartService) : base(update, botClient)
+        public BotCartHandler(Update update, ITelegramBotClient botClient, ICartService cartService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _cartService = cartService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {

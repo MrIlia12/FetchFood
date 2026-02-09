@@ -400,7 +400,7 @@ namespace BusinessLogic.Services.MakingOrders.States
                     return new OrderProcessingResult
                     {
                         Success = true,
-                        Message = "🎉 Заказ успешно оформлен! Ожидайте доставку.\n\nДля нового заказа начните оформление заново.",
+                        Message = "🎉 Заказ успешно оформлен! Ожидайте подтверждения.",
                         IsCompleted = true
                     };
                 }

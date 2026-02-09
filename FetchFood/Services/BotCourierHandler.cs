@@ -1,6 +1,8 @@
 using BusinessLogic.Services.Courier.Abstractions;
 using DataAccess.Entities;
 using FetchFood.Commands;
+using FetchFood.States;
+using System.Collections.Concurrent;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -14,14 +16,15 @@ namespace FetchFood.Services
     class BotCourierHandler : BotCommandHandler
     {
         private readonly ICourierService _courierService;
+        private readonly ConcurrentDictionary<long, UserState> _userState;
 
-        public BotCourierHandler(Update update, ITelegramBotClient botClient, ICourierService courierService) 
-            : base(update, botClient)
+        public BotCourierHandler(Update update, ITelegramBotClient botClient, ICourierService courierService, ConcurrentDictionary<long, UserState> userState) 
+            : base(update, botClient, userState)
         {
             _courierService = courierService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
@@ -60,8 +63,16 @@ namespace FetchFood.Services
 
             switch (action)
             {
+                case CourierCommands.AVAILABLE_ORDERS:
+                    await ShowAvailableOrdersAsync(chatId, userId);
+                    break;
+
                 case CourierCommands.ORDERS:
                     await ShowCourierOrdersAsync(chatId, userId);
+                    break;
+
+                case CourierCommands.TAKE:
+                    await TakeOrderToDelivery(chatId, userId, (int)orderId);
                     break;
 
                 case CourierCommands.DETAILS:
@@ -83,8 +94,78 @@ namespace FetchFood.Services
             await _bot.AnswerCallbackQuery(callback.Id);
         }
 
+        private async Task TakeOrderToDelivery(long chatId, long courierId, int orderId)
+        {
+            var result = await _courierService.TakeOrderInDeliveryAsync(courierId, orderId);
+
+            if (!result)
+            {
+                throw new Exception("Ошибка при обновлении заказа.");
+            }
+
+            var courierKeyboard = new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("📦 Мои заказы", Commands.CourierCommands.ViewOrders.Command),
+                    InlineKeyboardButton.WithCallbackData("📦 Доступные заказы", CourierCommands.ViewAvailableOrders.Command)
+                }
+            });
+
+            await _bot.SendMessage(
+                chatId: chatId,
+                text: "🚗 Консоль курьера!\n\nНажмите на кнопки ниже, чтобы посмотреть активные заказы для доставки.",
+                replyMarkup: courierKeyboard);
+
+            return;
+        }
+
         /// <summary>
         /// Показывает список активных заказов для курьера
+        /// </summary>
+        private async Task ShowAvailableOrdersAsync(long chatId, long courierId)
+        {
+            var orders = await _courierService.GetAvailableOrdersAsync(courierId);
+
+            if (orders == null || !orders.Any())
+            {
+                await _bot.SendMessage(
+                    chatId: chatId,
+                    text: "📦 Нет активных заказов для доставки.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine("📦 *Активные заказы для доставки:*\n");
+
+            var buttons = new List<InlineKeyboardButton[]>();
+
+            foreach (var order in orders)
+            {
+                sb.AppendLine($"🔹 Заказ #{order.OrderId}");
+                sb.AppendLine($"   📍 {order.Address}");
+                sb.AppendLine($"   💰 {order.Price:N2} ₽");
+                sb.AppendLine();
+
+                buttons.Add(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(
+                        $"📋 Заказ #{order.OrderId}",
+                        CourierCommands.WithOrderId(CourierCommands.DETAILS, order.OrderId))
+                });
+            }
+
+            var keyboard = new InlineKeyboardMarkup(buttons);
+
+            await _bot.SendMessage(
+                chatId: chatId,
+                text: sb.ToString(),
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                replyMarkup: keyboard);
+        }
+
+        /// <summary>
+        /// Показывает список активных заказов курьера
         /// </summary>
         private async Task ShowCourierOrdersAsync(long chatId, long courierId)
         {
@@ -147,35 +228,60 @@ namespace FetchFood.Services
             sb.AppendLine($"📍 *Адрес:* {order.Address}");
             sb.AppendLine($"📞 *Телефон:* {order.PhoneNumber}");
             sb.AppendLine($"💰 *Сумма:* {order.Price:N2} ₽");
-            
+
             if (!string.IsNullOrEmpty(order.Comment))
             {
                 sb.AppendLine($"💬 *Комментарий:* {order.Comment}");
             }
-            
+
             sb.AppendLine($"\n📊 *Статус:* {GetStatusText(order.Status)}");
 
-            var keyboard = new InlineKeyboardMarkup(new[]
+            InlineKeyboardMarkup keyboard;
+
+            if (order.IdCourier is not null)
             {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        "🚗 Я на месте!",
-                        CourierCommands.WithOrderId(CourierCommands.ARRIVED, order.OrderId))
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        "✅ Завершить доставку",
-                        CourierCommands.WithOrderId(CourierCommands.COMPLETE, order.OrderId))
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        "◀️ Назад к списку",
-                        CourierCommands.ViewOrders.Command)
-                }
-            });
+                keyboard =
+                    new InlineKeyboardMarkup(new[]
+                    {
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(
+                                "🚗 Я на месте!",
+                                CourierCommands.WithOrderId(CourierCommands.ARRIVED, order.OrderId))
+                        },
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(
+                                "✅ Завершить доставку",
+                                CourierCommands.WithOrderId(CourierCommands.COMPLETE, order.OrderId))
+                        },
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(
+                                "◀️ Назад к списку",
+                                CourierCommands.ViewOrders.Command)
+                        }
+                    });
+            }
+            else
+            {
+                keyboard =
+                    new InlineKeyboardMarkup(new[]
+                    {
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(
+                                "📦 Взять в доставку.",
+                                CourierCommands.WithOrderId(CourierCommands.TAKE, order.OrderId))
+                        },
+                        new[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(
+                                "◀️ Назад к списку",
+                                CourierCommands.ViewAvailableOrders.Command)
+                        }
+                    });
+            }
 
             await _bot.SendMessage(
                 chatId: chatId,
@@ -204,6 +310,10 @@ namespace FetchFood.Services
                     await _bot.SendMessage(
                         chatId: result.UserIdToNotify.Value,
                         text: result.UserNotificationMessage);
+
+                    var userId = (long)result.UserIdToNotify;
+                    var state = this._userState[userId];
+                    this._userState[userId].State.ToNextState(state);
                 }
                 catch (Exception ex)
                 {

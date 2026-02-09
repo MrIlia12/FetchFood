@@ -308,7 +308,7 @@ namespace FetchFood.Commands.Menu.Positions
 
                 // Затем отправляем запрос с ForceReply
                 var promptText = BuildForceReplyPrompt(ctx.ChatId, data);
-                await SendMessageAsync(ctx, promptText, new ForceReplyMarkup { Selective = true });
+                await SendMessageAsync(ctx, promptText);
             }
             else
             {

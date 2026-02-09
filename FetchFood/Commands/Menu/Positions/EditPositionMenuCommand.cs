@@ -28,18 +28,18 @@ namespace FetchFood.Commands.Menu.Positions
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("📝 Название", $"{BotCommands.MENU}:{BotCommands.EDIT_NAME}:{positionId}:"),
-                    InlineKeyboardButton.WithCallbackData("💰 Цена", $"{BotCommands.MENU}:{BotCommands.EDIT_PRICE}:{positionId}:")
+                    InlineKeyboardButton.WithCallbackData("Название", $"{BotCommands.MENU}:{BotCommands.EDIT_NAME}:{positionId}:"),
+                    InlineKeyboardButton.WithCallbackData("Цена", $"{BotCommands.MENU}:{BotCommands.EDIT_PRICE}:{positionId}:")
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🥗 Состав", $"{BotCommands.MENU}:{BotCommands.EDIT_INGREDIENTS}:{positionId}:"),
-                    InlineKeyboardButton.WithCallbackData("📄 Описание", $"{BotCommands.MENU}:{BotCommands.EDIT_DESCRIPTION}:{positionId}:")
+                    InlineKeyboardButton.WithCallbackData("Состав", $"{BotCommands.MENU}:{BotCommands.EDIT_INGREDIENTS}:{positionId}:"),
+                    InlineKeyboardButton.WithCallbackData("Описание", $"{BotCommands.MENU}:{BotCommands.EDIT_DESCRIPTION}:{positionId}:")
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🖼 Изображение", $"{BotCommands.MENU}:{BotCommands.EDIT_IMAGE}:{positionId}:"),
-                    InlineKeyboardButton.WithCallbackData("📂 Категория", $"{BotCommands.MENU}:{BotCommands.EDIT_POS_CATEGORY}:{positionId}:")
+                    InlineKeyboardButton.WithCallbackData("Изображение", $"{BotCommands.MENU}:{BotCommands.EDIT_IMAGE}:{positionId}:"),
+                    InlineKeyboardButton.WithCallbackData("Категория", $"{BotCommands.MENU}:{BotCommands.EDIT_POS_CATEGORY}:{positionId}:")
                 },
                 new[]
                 {
@@ -51,12 +51,12 @@ namespace FetchFood.Commands.Menu.Positions
 
             await SendMessageAsync(ctx,
                 $"Редактирование позиции «{position.Name}»:\n\n" +
-                $"📝 Название: {position.Name}\n" +
-                $"💰 Цена: {position.Price:0.##}\n" +
-                $"🥗 Состав: {position.Ingredients ?? "—"}\n" +
-                $"📄 Описание: {position.Description ?? "—"}\n" +
-                $"🖼 Изображение: {(string.IsNullOrEmpty(position.Image) ? "—" : "Установлено")}\n" +
-                $"📂 Категория: {categoryName}",
+                $"Название: {position.Name}\n" +
+                $"Цена: {position.Price:0.##}\n" +
+                $"Состав: {position.Ingredients ?? "—"}\n" +
+                $"Описание: {position.Description ?? "—"}\n" +
+                $"Изображение: {(string.IsNullOrEmpty(position.Image) ? "—" : "Установлено")}\n" +
+                $"Категория: {categoryName}",
                 new InlineKeyboardMarkup(rows));
 
             return true;

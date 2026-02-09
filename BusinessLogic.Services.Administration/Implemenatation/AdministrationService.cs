@@ -1,5 +1,6 @@
 ﻿using BusinessLogic.Services.Administration.Abstraction;
 using BusinessLogic.Services.Administration.Models;
+using DataAccess.Entities;
 using DataAccess.Entities.Models;
 using DataAccess.Repositories.Abstractions;
 
@@ -10,61 +11,76 @@ namespace BusinessLogic.Services.Administration.Implemenatation
     /// </summary>
     public class AdministrationService : IAdministrationService
     {
-        private readonly IOrderRepository _orderRepository;
+        private readonly IOrdersRepository _orderRepository;
         private readonly IUserRepository _userRepository;
 
-        public AdministrationService(IOrderRepository orderRepository, IUserRepository userRepository)
+        public AdministrationService(IOrdersRepository orderRepository, IUserRepository userRepository)
         {
             _orderRepository = orderRepository;
             _userRepository = userRepository;
         }
 
-        /// <summary>
-        /// Получает информацию по заказу по порядковому номеру.
-        /// </summary>
-        /// <param name="number">Порядковый номер.</param>
-        /// <returns></returns>
-        public async Task<OrderInformation> GetOrderInformationAsync(int number)
+        public async Task<List<Orders>> GetOrdersAsync(string status)
         {
-            var orders = await _orderRepository.GetOrdersAsync();
-            var user = await _userRepository.GetUserByIdAsync(orders[number].IdUser);
-            var orderPosition = number == 0
-                ? orders.Length == 1
-                    ? OrderPosition.Lonely
-                    : OrderPosition.First
-                : number == orders.Length - 1
-                    ? OrderPosition.Last
-                    : OrderPosition.Middle;
-
-
-            var result = new OrderInformation
+            List<Orders> orders;
+            try
             {
-                Id = orders[number].OrderId.ToString(),
-                ////CourierId = orders[number].CourierId.ToString(),
-                UserName = user.Name,
-                Price = orders[number].Price.ToString(),
-                Status = orders[number].Status.ToString(),
-                DateOrder = orders[number].DateOrder,
-                OrderPosition = orderPosition
-            };
+                orders = await _orderRepository.GetOrdersByStatusAsync(status);
+            }
+            catch
+            {
+                throw new Exception("Ошибка в выгрузке заказов.");
+            }
 
+            return orders;
+        }
+
+        public async Task<Orders> GetOrderAsync(int orderId)
+        {
+            Orders order;
+            try
+            {
+                order = await _orderRepository.GetOrderByIdAsync(orderId);
+            }
+            catch
+            {
+                throw new Exception("Ошибка в выгрузке заказов.");
+            }
+
+            return order;
+        }
+
+        public async Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus)
+        {
+            bool result;
+            try
+            {
+                var order = await _orderRepository.GetOrderByIdAsync(orderId);
+                order.Status = newStatus;
+                result = await _orderRepository.UpdateOrderAsync(order);
+            }
+            catch
+            {
+                throw new Exception("Ошибка при работе с заказами в БД.");
+            }
 
             return result;
         }
 
-        public async Task<bool> ChangeOrderStatus(int orderId)
+        public async Task<long> GetOrdersUserIdAsync(int orderId)
         {
-            var order = await _orderRepository.GetOrderByIdAsync(orderId);
-            
-            //var statusNumber = (int)order.Status;
-            //order.Status = (statusNumber + 1).ToString();
+            long userId;
+            try
+            {
+                var order = await _orderRepository.GetOrderByIdAsync(orderId);
+                userId = order.IdUser;
+            }
+            catch
+            {
+                throw new Exception("Ошибка при выгрузке заказов.");
+            }
 
-            return await _orderRepository.UpdateOrderAsync(order);
-        }
-
-        public async Task<bool> DeleteOrderAsync(int orderId)
-        {
-            return await _orderRepository.RemoveOrderByIdAsync(orderId);
+            return userId;
         }
     }
 }

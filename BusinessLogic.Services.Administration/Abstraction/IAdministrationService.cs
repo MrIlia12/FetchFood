@@ -8,10 +8,12 @@ namespace BusinessLogic.Services.Administration.Abstraction
     /// </summary>
     public interface IAdministrationService 
     {
-        Task<OrderInformation> GetOrderInformationAsync(int number);
+        Task<List<Orders>> GetOrdersAsync(string status);
 
-        Task<bool> ChangeOrderStatus(int orderId);
+        Task<Orders> GetOrderAsync(int orderId);
 
-        Task<bool> DeleteOrderAsync(int orderId);
+        Task<bool> UpdateOrderStatusAsync(int orderId, string newStatus);
+
+        Task<long> GetOrdersUserIdAsync(int orderId);
     }
 }

@@ -135,7 +135,7 @@ namespace FetchFood.Commands.Menu.Positions
     {
         public override string CommandKey => BotCommands.EDIT_IMAGE;
         protected override string FieldType => "image";
-        protected override string FieldNameRu => "URL изображения";
+        protected override string FieldNameRu => "URL или file_id изображения";
 
         protected override Task<bool> ApplyValueAsync(MenuCommandContext ctx, DataAccess.Entities.Position position, string value)
         {

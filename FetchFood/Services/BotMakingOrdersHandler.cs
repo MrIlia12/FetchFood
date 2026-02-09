@@ -4,6 +4,8 @@ using FetchFood.Commands;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using FetchFood.States;
+using System.Collections.Concurrent;
 
 
 namespace FetchFood.Services
@@ -14,12 +16,12 @@ namespace FetchFood.Services
     class BotMakingOrdersHandler : BotCommandHandler
     {
         private readonly IMakingOrdersService _makingOrdersService;
-        public BotMakingOrdersHandler(Update update, ITelegramBotClient botClient, IMakingOrdersService makingOrdersService) : base(update, botClient)
+        public BotMakingOrdersHandler(Update update, ITelegramBotClient botClient, IMakingOrdersService makingOrdersService, ConcurrentDictionary<long, UserState> userState) : base(update, botClient, userState)
         {
             _makingOrdersService = makingOrdersService;
         }
 
-        public override async void Invoke()
+        public override async Task Invoke()
         {
             try
             {
@@ -59,8 +61,9 @@ namespace FetchFood.Services
                 {
                     await _bot.SendMessage(
                         chatId: chatId,
-                        replyMarkup: new ForceReplyMarkup { Selective = true },
-                        text: BotCommands.ORDER1);
+                        text: "📝 Введите адрес доставки в формате:\nул. <улица>, д. <номер дома>, кв. <номер квартиры>\n\n" +
+                              "Пример: ул. Ленина, д. 15, кв. 42\n\n" +
+                              "Допустимые форматы дома: 15, 15а, 15/1, 15/1а");
                 }
                 else
                 {

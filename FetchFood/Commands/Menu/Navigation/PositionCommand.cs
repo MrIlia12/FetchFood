@@ -61,7 +61,7 @@ namespace FetchFood.Commands.Menu.Navigation
             sb.Append($"{(p.Name ?? "").Trim()}\nЦена: {FormatPrice(p.Price)}");
 
             if (p.Category != null)
-                sb.Append($"\n📂 Категория: {p.Category.Name}");
+                sb.Append($"\nКатегория: {p.Category.Name}");
 
             if (!string.IsNullOrWhiteSpace(p.Ingredients))
                 sb.Append($"\nСостав: {p.Ingredients}");
@@ -79,12 +79,7 @@ namespace FetchFood.Commands.Menu.Navigation
 
             if (posNum != -1)
             {
-                var mainRow = new List<InlineKeyboardButton>
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        "Добавить в корзину",
-                        $"{BotCommands.CART}{CommandsBase.Separator}{BotCommands.CART_ADD} {posNum} {1}")
-                };
+                var mainRow = new List<InlineKeyboardButton>();
 
                 if (isAdmin)
                 {
@@ -95,8 +90,14 @@ namespace FetchFood.Commands.Menu.Navigation
                         "🗑 Удалить",
                         $"{BotCommands.MENU}:{BotCommands.CONFIRM_DELETE}:{posNum}"));
                 }
+                else
+                {
+                    mainRow.Add(InlineKeyboardButton.WithCallbackData(
+                        "Добавить в корзину",
+                        $"{BotCommands.CART}{CommandsBase.Separator}{BotCommands.CART_ADD} {posNum} {1}"));
+                }
 
-                buttons.Add(mainRow.ToArray());
+                    buttons.Add(mainRow.ToArray());
             }
 
             buttons.Add(new[] { BackToMenuButton() });

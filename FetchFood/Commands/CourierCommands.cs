@@ -8,12 +8,15 @@ namespace FetchFood.Commands
         public const string COURIER = "courier";
 
         // Действия курьера
-        public const string ORDERS = "orders";           // Список заказов
-        public const string DETAILS = "details";         // Детали заказа
-        public const string ARRIVED = "arrived";         // Я на месте
-        public const string COMPLETE = "complete";       // Завершить доставку
+        public const string AVAILABLE_ORDERS = "AvailableOrders"; // Заказы доступные для доставки
+        public const string TAKE = "Take";                        // Взять заказ в доставку
+        public const string ORDERS = "orders";                    // Список заказов
+        public const string DETAILS = "details";                  // Детали заказа
+        public const string ARRIVED = "arrived";                  // Я на месте
+        public const string COMPLETE = "complete";                // Завершить доставку
 
         // Готовые команды для кнопок
+        public static readonly CourierCommands ViewAvailableOrders = new($"{COURIER}:{AVAILABLE_ORDERS}");
         public static readonly CourierCommands ViewOrders = new($"{COURIER}:{ORDERS}");
         public static readonly CourierCommands OrderDetails = new($"{COURIER}:{DETAILS}");
         public static readonly CourierCommands ImHere = new($"{COURIER}:{ARRIVED}");
